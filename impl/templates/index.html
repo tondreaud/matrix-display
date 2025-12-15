@@ -139,6 +139,36 @@
             border-color: #64b5f6;
             background: #1a237e;
         }
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            background: #0f0f23;
+            border: 1px solid #333;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .checkbox-container input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+        }
+        .checkbox-container span {
+            color: #fff;
+        }
+        .spotify-settings {
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 10px;
+            background: #0f0f23;
+        }
+        .spotify-settings h3 {
+            margin-top: 0;
+            color: #1db954;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
     </style>
 </head>
 <body>
@@ -155,7 +185,7 @@
     <form method="POST" action="/save">
         <div class="form-group">
             <label for="mode">Display Mode</label>
-            <select name="mode" id="mode" onchange="toggleSubwaySettings()">
+            <select name="mode" id="mode" onchange="toggleModeSettings()">
                 <option value="spotify" {% if settings.mode == 'spotify' %}selected{% endif %}>🎵 Spotify</option>
                 <option value="subway" {% if settings.mode == 'subway' %}selected{% endif %}>🚇 NYC Subway</option>
             </select>
@@ -168,6 +198,18 @@
                        min="10" max="100" value="{{ settings.brightness }}"
                        oninput="updateBrightnessValue(this.value)">
                 <span class="slider-value" id="brightness-value">{{ settings.brightness }}%</span>
+            </div>
+        </div>
+        
+        <div class="form-group" id="spotify-settings">
+            <label>Spotify Settings</label>
+            <div class="spotify-settings">
+                <label class="checkbox-container">
+                    <input type="checkbox" name="fullscreen" id="fullscreen"
+                           {% if settings.fullscreen %}checked{% endif %}>
+                    <span>🖼️ Fullscreen Album Art (64x64)</span>
+                </label>
+                <p class="help-text">Shows album art filling the entire display</p>
             </div>
         </div>
         
@@ -222,14 +264,17 @@
             document.getElementById('brightness-value').textContent = val + '%';
         }
         
-        function toggleSubwaySettings() {
+        function toggleModeSettings() {
             const mode = document.getElementById('mode').value;
+            const spotifySettings = document.getElementById('spotify-settings');
             const subwaySettings = document.getElementById('subway-settings');
+            
+            spotifySettings.style.display = (mode === 'spotify') ? 'block' : 'none';
             subwaySettings.style.display = (mode === 'subway') ? 'block' : 'none';
         }
         
         // Initial toggle
-        toggleSubwaySettings();
+        toggleModeSettings();
     </script>
 </body>
 </html>
