@@ -1,0 +1,16 @@
+[Unit]
+Description=Matrix Display Web Configuration
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/matrix-display/impl
+ExecStart=/home/pi/matrix-display/.venv/bin/python webapp.py
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
+

@@ -1,0 +1,15 @@
+[Unit]
+Description=Matrix Display Controller
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/pi/matrix-display/impl
+ExecStart=/home/pi/matrix-display/start-display.sh
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

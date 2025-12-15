@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matrix Display Settings</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+        }
+        h1 {
+            text-align: center;
+            color: #64b5f6;
+            margin-bottom: 30px;
+        }
+        .flash {
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .flash.success { background: #2e7d32; }
+        .flash.info { background: #1565c0; }
+        .flash.warning { background: #f57c00; }
+        .flash.error { background: #c62828; }
+        
+        form {
+            background: #16213e;
+            padding: 25px;
+            border-radius: 10px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #90caf9;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #333;
+            border-radius: 5px;
+            background: #0f0f23;
+            color: #fff;
+            font-size: 16px;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #64b5f6;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        input[type="range"] {
+            flex: 1;
+            padding: 0;
+        }
+        .slider-value {
+            min-width: 40px;
+            text-align: center;
+            font-weight: bold;
+            color: #ffd54f;
+        }
+        .subway-settings {
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 10px;
+            background: #0f0f23;
+        }
+        .subway-settings h3 {
+            margin-top: 0;
+            color: #81c784;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .btn-save {
+            background: #4caf50;
+            color: white;
+        }
+        .btn-save:hover {
+            background: #45a049;
+        }
+        .btn-restart {
+            background: #ff9800;
+            color: white;
+        }
+        .btn-restart:hover {
+            background: #f57c00;
+        }
+        .help-text {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+        .direction-options {
+            display: flex;
+            gap: 10px;
+        }
+        .direction-options label {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px;
+            background: #0f0f23;
+            border: 1px solid #333;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 0;
+        }
+        .direction-options input[type="radio"] {
+            width: auto;
+        }
+        .direction-options label:has(input:checked) {
+            border-color: #64b5f6;
+            background: #1a237e;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚇 Matrix Display</h1>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    <form method="POST" action="/save">
+        <div class="form-group">
+            <label for="mode">Display Mode</label>
+            <select name="mode" id="mode" onchange="toggleSubwaySettings()">
+                <option value="spotify" {% if settings.mode == 'spotify' %}selected{% endif %}>🎵 Spotify</option>
+                <option value="subway" {% if settings.mode == 'subway' %}selected{% endif %}>🚇 NYC Subway</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="brightness">Brightness</label>
+            <div class="slider-container">
+                <input type="range" name="brightness" id="brightness" 
+                       min="10" max="100" value="{{ settings.brightness }}"
+                       oninput="updateBrightnessValue(this.value)">
+                <span class="slider-value" id="brightness-value">{{ settings.brightness }}%</span>
+            </div>
+        </div>
+        
+        <div class="form-group" id="subway-settings">
+            <label>Subway Configuration</label>
+            <div class="subway-settings">
+                <h3>Station & Lines</h3>
+                
+                <div class="form-group">
+                    <label for="stop_id">Stop ID</label>
+                    <input type="text" name="stop_id" id="stop_id" 
+                           value="{{ settings.stop_id }}" placeholder="e.g., 635">
+                    <p class="help-text">
+                        Common: 635 (Union Sq), L06 (1st Ave), R20 (8th St-NYU)
+                    </p>
+                </div>
+                
+                <div class="form-group">
+                    <label>Direction</label>
+                    <div class="direction-options">
+                        <label>
+                            <input type="radio" name="direction" value="N" 
+                                   {% if settings.direction == 'N' %}checked{% endif %}>
+                            ⬆️ Uptown
+                        </label>
+                        <label>
+                            <input type="radio" name="direction" value="S"
+                                   {% if settings.direction == 'S' %}checked{% endif %}>
+                            ⬇️ Downtown
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="lines">Lines (comma-separated)</label>
+                    <input type="text" name="lines" id="lines" 
+                           value="{{ settings.lines }}" placeholder="e.g., 4,5,6">
+                    <p class="help-text">Examples: 4,5,6 or A,C,E or L or N,Q,R,W</p>
+                </div>
+            </div>
+        </div>
+        
+        <button type="submit" class="btn-save">💾 Save & Restart</button>
+    </form>
+    
+    <form method="POST" action="/restart" style="background: transparent; padding: 0;">
+        <button type="submit" class="btn-restart">🔄 Restart Display Only</button>
+    </form>
+    
+    <script>
+        function updateBrightnessValue(val) {
+            document.getElementById('brightness-value').textContent = val + '%';
+        }
+        
+        function toggleSubwaySettings() {
+            const mode = document.getElementById('mode').value;
+            const subwaySettings = document.getElementById('subway-settings');
+            subwaySettings.style.display = (mode === 'subway') ? 'block' : 'none';
+        }
+        
+        // Initial toggle
+        toggleSubwaySettings();
+    </script>
+</body>
+</html>
+

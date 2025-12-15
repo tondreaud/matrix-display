@@ -6,8 +6,9 @@ limit_refresh_rate_hz = 100
 shutdown_delay = 30
 
 [Spotify]
-client_id = dfe543c6ad7e4087bfec18517feb26dc
-client_secret = ee99b07916db4112b5e0143f3571c9fb
+; Get these from https://developer.spotify.com/dashboard
+client_id = YOUR_CLIENT_ID_HERE
+client_secret = YOUR_CLIENT_SECRET_HERE
 redirect_uri = http://127.0.0.1:8080/callback
 ; device_whitelist = ['Marantz AVR', 'Samsung TV']
 
@@ -24,3 +25,4 @@ stop_id = 635
 direction = S
 ; Comma-separated subway lines to show
 lines = 4,5,6
+

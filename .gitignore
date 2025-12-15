@@ -5,3 +5,5 @@ bin
 rpi-rgb-led-matrix
 impl/.cache
 .venv
+config.ini
+impl/.current_mode
