@@ -7,3 +7,4 @@ impl/.cache
 .venv
 config.ini
 impl/.current_mode
+impl/.fullscreen
