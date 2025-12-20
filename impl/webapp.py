@@ -104,7 +104,7 @@ def save():
     # Restart the display service only on Raspberry Pi (Linux)
     if IS_RASPBERRY_PI:
         try:
-            subprocess.run(['sudo', 'systemctl', 'restart', 'matrix-display'], 
+            subprocess.run(['sudo', 'systemctl', 'restart', 'matrix'], 
                           capture_output=True, timeout=10)
             flash('Display service restarted.', 'info')
         except Exception as e:
@@ -119,7 +119,7 @@ def restart():
     """Restart the display service."""
     if IS_RASPBERRY_PI:
         try:
-            subprocess.run(['sudo', 'systemctl', 'restart', 'matrix-display'], 
+            subprocess.run(['sudo', 'systemctl', 'restart', 'matrix'], 
                           capture_output=True, timeout=10)
             flash('Display service restarted.', 'success')
         except Exception as e:
