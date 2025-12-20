@@ -45,7 +45,7 @@ class SpotifyScreen:
         # delay spotify fetches
         time.sleep(3)
         while True:
-            self.response = self.spotify_module.getCurrentPlayback()
+            self.spotify_module.getCurrentPlayback()  # Puts data in queue on success, does nothing on failure
             time.sleep(1)
 
     def generate(self):
