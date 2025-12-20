@@ -18,7 +18,27 @@ A Spotify display for 64x64 RGB LED matrices (raspberry pi project v2)
 5. Save, then tap "Settings" in the upper right
 6. Copy the generated Client ID and Secret ID for later
 
-## Pi Setup
+## WiFi Setup 
+
+This device uses **Comitup** for easy WiFi configuration - no technical knowledge required!
+
+### First-Time Setup
+1. **Power on** the Raspberry Pi
+2. **Wait ~1 minute** for it to boot
+3. If it can't find a known WiFi network, it will create a hotspot called **"MatrixDisplay-Setup"**
+4. **Connect your phone/laptop** to the "MatrixDisplay-Setup" WiFi network
+5. A **captive portal** should automatically open (if not, navigate to http://10.41.0.1/)
+6. **Select your home WiFi** from the list and enter the password
+7. The Pi will connect to your WiFi and the display will start automatically!
+
+### Reconnecting to a Different WiFi
+If you move the device to a new location or change your WiFi:
+1. The Pi will automatically create the "MatrixDisplay-Setup" hotspot when it can't connect
+2. Follow the steps above to configure the new network
+
+---
+
+## Pi Setup (For Developers)
 
 > [!IMPORTANT]
 > Please see the [pi setup wiki page](https://github.com/kylejohnsonkj/rpi-spotify-matrix-display/wiki/raspberry-pi-full-setup-guide) for a full installation guide!
