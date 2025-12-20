@@ -218,5 +218,7 @@ class SubwayScreen:
                 # Small dot positioned at baseline (lower than text)
                 dot_x = current_x + 1
                 dot_y = y + 7  # Near bottom of text
-                image.putpixel((dot_x, dot_y), color)
+                # Bounds check before drawing
+                if 0 <= dot_x < self.canvas_width and 0 <= dot_y < self.canvas_height:
+                    image.putpixel((dot_x, dot_y), color)
                 current_x += 4  # Space after dot
