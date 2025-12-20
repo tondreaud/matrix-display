@@ -74,5 +74,7 @@ class SpotifyModule:
                 self.isPlaying = track['is_playing']
 
                 self.queue.put((artist, title, art_url, self.isPlaying, track["progress_ms"], track["item"]["duration_ms"]))
+            elif (track is None):
+                self.queue.put(None)
         except Exception as e:
             print(e)

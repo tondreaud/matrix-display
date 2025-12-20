@@ -63,7 +63,7 @@ def main():
     options.drop_privileges = False
     matrix = RGBMatrix(options = options)
 
-    shutdown_delay = config.getint('Matrix', 'shutdown_delay', fallback=600)
+    shutdown_delay = config.getint('Matrix', 'shutdown_delay', fallback=15)
     black_screen = Image.new("RGB", (canvas_width, canvas_height), (0,0,0))
     last_active_time = math.floor(time.time())
 

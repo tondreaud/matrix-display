@@ -20,6 +20,7 @@ class SpotifyScreen:
         self.current_art_img = None
         self.current_title = ''
         self.current_artist = ''
+        self.current_frame = None
 
         self.title_animation_cnt = 0
         self.artist_animation_cnt = 0
@@ -65,11 +66,13 @@ class SpotifyScreen:
                     img = Image.open(BytesIO(response.content))
                     self.current_art_img = img.resize((self.canvas_width, self.canvas_height), resample=Image.LANCZOS)
 
-                frame = Image.new("RGB", (self.canvas_width, self.canvas_height), (0,0,0))
-                draw = ImageDraw.Draw(frame)
-
-                frame.paste(self.current_art_img, (0,0))
-                return (frame, self.is_playing)
+                    frame = Image.new("RGB", (self.canvas_width, self.canvas_height), (0,0,0))
+                    draw = ImageDraw.Draw(frame)
+                    frame.paste(self.current_art_img, (0,0))
+                    self.current_frame = frame
+                    return (frame, self.is_playing)
+                else:
+                    return (self.current_frame, self.is_playing)
             else:
                 if not self.is_playing:
                     if not self.paused:
@@ -113,6 +116,7 @@ class SpotifyScreen:
                 if self.current_art_img is not None:
                     if show_fullscreen:
                         frame.paste(self.current_art_img, (0,0))
+                        self.current_frame = frame
                         return (frame, self.is_playing)
                     else:
                         frame.paste(self.current_art_img, (8,14))
@@ -155,11 +159,12 @@ class SpotifyScreen:
                 draw.rectangle((0,line_y-1,0+round(((progress_ms / duration_ms) * 100) // 1.57), line_y), fill=self.play_color)
                 drawPlayPause(draw, self.is_playing, self.play_color)
                 
+                self.current_frame = frame
                 return (frame, self.is_playing)
         else:
             #not active
-            frame = Image.new("RGB", (self.canvas_width, self.canvas_height), (0,0,0))
-            draw = ImageDraw.Draw(frame)
+            # frame = Image.new("RGB", (self.canvas_width, self.canvas_height), (0,0,0))
+            # draw = ImageDraw.Draw(frame)
 
             self.current_art_url = ''
             self.is_playing = False
@@ -170,7 +175,7 @@ class SpotifyScreen:
             self.paused = True
             self.paused_time = math.floor(time.time())
 
-            return (None, self.is_playing)
+            return (self.current_frame, self.is_playing)
 
 def drawPlayPause(draw, is_playing, color):
     x = 10
