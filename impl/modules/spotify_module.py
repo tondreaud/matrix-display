@@ -1,5 +1,6 @@
 import os, math, time, spotipy
 from queue import LifoQueue
+from spotipy.exceptions import SpotifyException
 
 class SpotifyModule:
     def __init__(self, config):
@@ -7,6 +8,7 @@ class SpotifyModule:
         self.calls = 0
         self.queue = LifoQueue()
         self.config = config
+        self.consecutive_401s = 0
         
         if config is not None and 'Spotify' in config and 'client_id' in config['Spotify'] \
             and 'client_secret' in config['Spotify'] and 'redirect_uri' in config['Spotify']:
@@ -74,7 +76,24 @@ class SpotifyModule:
                 self.isPlaying = track['is_playing']
 
                 self.queue.put((artist, title, art_url, self.isPlaying, track["progress_ms"], track["item"]["duration_ms"]))
+                self.consecutive_401s = 0  # Reset on success
             elif (track is None):
                 self.queue.put(None)
+                self.consecutive_401s = 0  # Reset on success
+        except SpotifyException as e:
+            if e.http_status == 401:
+                self.consecutive_401s += 1
+                if self.consecutive_401s <= 3:
+                    # Try forcing a token refresh - don't trust expires_at
+                    print(f"[Spotify] 401 error, forcing token refresh (attempt {self.consecutive_401s})")
+                    try:
+                        self.auth_manager.get_access_token(as_dict=False, check_cache=False)
+                    except Exception as refresh_error:
+                        print(f"[Spotify] Refresh failed: {refresh_error}")
+                elif self.consecutive_401s == 4:
+                    print("[Spotify] Multiple 401s - auth may need manual re-authentication")
+                # Suppress further spam after 4 attempts
+            else:
+                print(e)
         except Exception as e:
             print(e)
