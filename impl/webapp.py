@@ -132,5 +132,5 @@ def restart():
 if __name__ == '__main__':
     # Run on all interfaces so it's accessible on the network
     # Using port 5001 to avoid conflict with AirPlay Receiver on macOS
-    app.run(host='0.0.0.0', port=5001, debug=False)
+    app.run(host='0.0.0.0', port=80, debug=False)
 
