@@ -22,15 +22,6 @@
             color: #64b5f6;
             margin-bottom: 30px;
         }
-        .flash {
-            padding: 10px 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-        .flash.success { background: #2e7d32; }
-        .flash.info { background: #1565c0; }
-        .flash.warning { background: #f57c00; }
-        .flash.error { background: #c62828; }
         
         form {
             background: #16213e;
@@ -104,57 +95,71 @@
         .btn-save:hover {
             background: #45a049;
         }
-        .btn-restart {
-            background: #ff9800;
-            color: white;
-        }
-        .btn-restart:hover {
-            background: #f57c00;
-        }
-        .power-toggle {
+        .power-toggle-container {
             display: flex;
-            gap: 10px;
+            align-items: center;
+            justify-content: space-between;
+            background: #16213e;
+            padding: 16px 20px;
+            border-radius: 10px;
             margin-bottom: 25px;
         }
-        .power-toggle form {
-            flex: 1;
-            background: transparent;
-            padding: 0;
+        .power-label {
+            font-size: 16px;
+            font-weight: 500;
+            color: #90caf9;
         }
-        .btn-on {
-            background: #4caf50;
-            color: white;
-            width: 100%;
+        .power-status {
+            font-size: 13px;
+            color: #666;
+            margin-top: 2px;
         }
-        .btn-on:hover {
-            background: #45a049;
+        .power-status.on { color: #4caf50; }
+        .power-status.off { color: #888; }
+        .switch {
+            position: relative;
+            width: 52px;
+            height: 28px;
+            cursor: pointer;
         }
-        .btn-off {
-            background: #f44336;
-            color: white;
-            width: 100%;
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
         }
-        .btn-off:hover {
-            background: #d32f2f;
+        .switch-slider {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #333;
+            border-radius: 28px;
+            transition: all 0.3s ease;
         }
-        .btn-on:disabled, .btn-off:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
+        .switch-slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 3px;
+            bottom: 3px;
+            background-color: #fff;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
-        .status-indicator {
-            text-align: center;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 15px;
-            font-weight: bold;
+        .switch input:checked + .switch-slider {
+            background-color: #4caf50;
         }
-        .status-on {
-            background: #1b5e20;
-            color: #a5d6a7;
+        .switch input:checked + .switch-slider:before {
+            transform: translateX(24px);
         }
-        .status-off {
-            background: #b71c1c;
-            color: #ef9a9a;
+        .switch:hover .switch-slider {
+            background-color: #444;
+        }
+        .switch:hover input:checked + .switch-slider {
+            background-color: #45a049;
         }
         .help-text {
             font-size: 12px;
@@ -219,30 +224,19 @@
 <body>
     <h1>🚇 Matrix Display</h1>
     
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="flash {{ category }}">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
-    
-    <!-- Display Power Status -->
-    <div class="status-indicator {% if settings.display_on %}status-on{% else %}status-off{% endif %}">
-        Display is {% if settings.display_on %}ON ✓{% else %}OFF{% endif %}
-    </div>
-    
-    <!-- Power Toggle Buttons -->
-    <div class="power-toggle">
-        <form method="POST" action="/display/on">
-            <button type="submit" class="btn-on" {% if settings.display_on %}disabled{% endif %}>
-                ⚡ Turn ON
-            </button>
-        </form>
-        <form method="POST" action="/display/off">
-            <button type="submit" class="btn-off" {% if not settings.display_on %}disabled{% endif %}>
-                🔌 Turn OFF
-            </button>
+    <!-- Power Toggle Switch -->
+    <div class="power-toggle-container">
+        <div>
+            <div class="power-label">Display Power</div>
+            <div class="power-status {% if settings.display_on %}on{% else %}off{% endif %}">
+                {% if settings.display_on %}Running{% else %}Stopped{% endif %}
+            </div>
+        </div>
+        <form method="POST" action="/display/toggle" id="toggle-form">
+            <label class="switch">
+                <input type="checkbox" {% if settings.display_on %}checked{% endif %} onchange="document.getElementById('toggle-form').submit()">
+                <span class="switch-slider"></span>
+            </label>
         </form>
     </div>
     
@@ -322,9 +316,6 @@
         <button type="submit" class="btn-save">💾 Save & Restart</button>
     </form>
     
-    <form method="POST" action="/restart" style="background: transparent; padding: 0;">
-        <button type="submit" class="btn-restart">🔄 Restart Display Only</button>
-    </form>
     
     <script>
         function updateBrightnessValue(val) {

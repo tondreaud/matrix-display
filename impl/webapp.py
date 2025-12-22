@@ -5,7 +5,7 @@ import os
 import sys
 import subprocess
 import configparser
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for
 
 # Check if we're running on a Raspberry Pi (Linux with systemd)
 IS_RASPBERRY_PI = sys.platform == 'linux'
@@ -113,63 +113,32 @@ def save():
     # Write config
     write_config(config)
     
-    flash('Settings saved successfully!', 'success')
-    
     # Restart the display service only on Raspberry Pi (Linux)
     if IS_RASPBERRY_PI:
         try:
             subprocess.run(['sudo', 'systemctl', 'restart', 'matrix'], 
                           capture_output=True, timeout=10)
-            flash('Display service restarted.', 'info')
-        except Exception as e:
-            flash(f'Could not restart service: {e}', 'warning')
-    else:
-        flash('Config saved. Restart the emulator manually to apply changes.', 'info')
+        except Exception:
+            pass
     
     return redirect(url_for('index'))
 
-@app.route('/restart', methods=['POST'])
-def restart():
-    """Restart the display service."""
-    if IS_RASPBERRY_PI:
-        try:
-            subprocess.run(['sudo', 'systemctl', 'restart', 'matrix'], 
-                          capture_output=True, timeout=10)
-            flash('Display service restarted.', 'success')
-        except Exception as e:
-            flash(f'Could not restart service: {e}', 'error')
-    else:
-        flash('Not on Raspberry Pi - restart the emulator manually.', 'info')
-    
-    return redirect(url_for('index'))
 
-@app.route('/display/on', methods=['POST'])
-def display_on():
-    """Turn the display on (start service)."""
+@app.route('/display/toggle', methods=['POST'])
+def display_toggle():
+    """Toggle the display on/off."""
     if IS_RASPBERRY_PI:
         try:
-            subprocess.run(['sudo', 'systemctl', 'start', 'matrix'], 
-                          capture_output=True, timeout=10)
-            flash('Display turned ON.', 'success')
-        except Exception as e:
-            flash(f'Could not start display: {e}', 'error')
-    else:
-        flash('Not on Raspberry Pi.', 'info')
-    
-    return redirect(url_for('index'))
-
-@app.route('/display/off', methods=['POST'])
-def display_off():
-    """Turn the display off (stop service)."""
-    if IS_RASPBERRY_PI:
-        try:
-            subprocess.run(['sudo', 'systemctl', 'stop', 'matrix'], 
-                          capture_output=True, timeout=10)
-            flash('Display turned OFF.', 'success')
-        except Exception as e:
-            flash(f'Could not stop display: {e}', 'error')
-    else:
-        flash('Not on Raspberry Pi.', 'info')
+            if get_display_status():
+                # Currently on, turn off
+                subprocess.run(['sudo', 'systemctl', 'stop', 'matrix'], 
+                              capture_output=True, timeout=10)
+            else:
+                # Currently off, turn on
+                subprocess.run(['sudo', 'systemctl', 'start', 'matrix'], 
+                              capture_output=True, timeout=10)
+        except Exception:
+            pass
     
     return redirect(url_for('index'))
 
