@@ -49,6 +49,19 @@ def get_fullscreen():
             return f.read().strip() == 'true'
     return True  # Default to fullscreen
 
+def get_display_status():
+    """Check if the matrix display service is running."""
+    if not IS_RASPBERRY_PI:
+        return True  # Assume running in dev mode
+    try:
+        result = subprocess.run(
+            ['systemctl', 'is-active', 'matrix'],
+            capture_output=True, text=True, timeout=5
+        )
+        return result.stdout.strip() == 'active'
+    except Exception:
+        return False
+
 def set_fullscreen(enabled):
     """Save fullscreen setting."""
     fs_file = os.path.join(os.path.dirname(__file__), '.fullscreen')
@@ -68,6 +81,7 @@ def index():
         'stop_id': config.get('Subway', 'stop_id', fallback='635'),
         'direction': config.get('Subway', 'direction', fallback='S'),
         'lines': config.get('Subway', 'lines', fallback='4,5,6'),
+        'display_on': get_display_status(),
     }
     
     return render_template('index.html', settings=settings)
@@ -126,6 +140,36 @@ def restart():
             flash(f'Could not restart service: {e}', 'error')
     else:
         flash('Not on Raspberry Pi - restart the emulator manually.', 'info')
+    
+    return redirect(url_for('index'))
+
+@app.route('/display/on', methods=['POST'])
+def display_on():
+    """Turn the display on (start service)."""
+    if IS_RASPBERRY_PI:
+        try:
+            subprocess.run(['sudo', 'systemctl', 'start', 'matrix'], 
+                          capture_output=True, timeout=10)
+            flash('Display turned ON.', 'success')
+        except Exception as e:
+            flash(f'Could not start display: {e}', 'error')
+    else:
+        flash('Not on Raspberry Pi.', 'info')
+    
+    return redirect(url_for('index'))
+
+@app.route('/display/off', methods=['POST'])
+def display_off():
+    """Turn the display off (stop service)."""
+    if IS_RASPBERRY_PI:
+        try:
+            subprocess.run(['sudo', 'systemctl', 'stop', 'matrix'], 
+                          capture_output=True, timeout=10)
+            flash('Display turned OFF.', 'success')
+        except Exception as e:
+            flash(f'Could not stop display: {e}', 'error')
+    else:
+        flash('Not on Raspberry Pi.', 'info')
     
     return redirect(url_for('index'))
 
