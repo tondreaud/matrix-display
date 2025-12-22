@@ -281,13 +281,16 @@
             <label>Subway Configuration</label>
             <div class="subway-settings">
                 <h3>Station & Lines</h3>
+                <p class="help-text" style="margin-bottom: 15px; color: #aaa;">
+                    The display checks all configured stop IDs and shows the next 2 trains arriving from any of your configured lines.
+                </p>
                 
                 <div class="form-group">
-                    <label for="stop_id">Stop ID</label>
-                    <input type="text" name="stop_id" id="stop_id" 
-                           value="{{ settings.stop_id }}" placeholder="e.g., 635">
+                    <label for="stop_ids">Stop IDs (comma-separated)</label>
+                    <input type="text" name="stop_ids" id="stop_ids" 
+                           value="{{ settings.stop_ids }}" placeholder="e.g., 635,R20,L03">
                     <p class="help-text">
-                        Common: 635 (Union Sq), L06 (1st Ave), R20 (8th St-NYU)
+                        Union Sq: 635 (4/5/6), R20 (N/Q/R/W), L03 (L)
                     </p>
                 </div>
                 

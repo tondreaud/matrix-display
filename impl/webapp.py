@@ -78,7 +78,7 @@ def index():
         'mode': get_current_mode(),
         'fullscreen': get_fullscreen(),
         'brightness': config.getint('Matrix', 'brightness', fallback=50),
-        'stop_id': config.get('Subway', 'stop_id', fallback='635'),
+        'stop_ids': config.get('Subway', 'stop_ids', fallback=config.get('Subway', 'stop_id', fallback='635')),
         'direction': config.get('Subway', 'direction', fallback='S'),
         'lines': config.get('Subway', 'lines', fallback='4,5,6'),
         'display_on': get_display_status(),
@@ -99,7 +99,7 @@ def save():
     # Update Subway settings
     if 'Subway' not in config:
         config['Subway'] = {}
-    config['Subway']['stop_id'] = request.form.get('stop_id', '635')
+    config['Subway']['stop_ids'] = request.form.get('stop_ids', '635')
     config['Subway']['direction'] = request.form.get('direction', 'S')
     config['Subway']['lines'] = request.form.get('lines', '4,5,6')
     

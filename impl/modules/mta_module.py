@@ -42,7 +42,13 @@ class MTAModule:
         
         # Parse config
         if config is not None and 'Subway' in config:
-            self.stop_id = config.get('Subway', 'stop_id', fallback='127')
+            # Support multiple stop IDs (comma-separated)
+            stop_ids_str = config.get('Subway', 'stop_ids', fallback='')
+            if not stop_ids_str:
+                # Fallback to legacy single stop_id
+                stop_ids_str = config.get('Subway', 'stop_id', fallback='127')
+            self.stop_ids = [s.strip() for s in stop_ids_str.split(',') if s.strip()]
+            
             self.direction = config.get('Subway', 'direction', fallback='N')
             lines_str = config.get('Subway', 'lines', fallback='1,2,3')
             self.lines = [line.strip() for line in lines_str.split(',')]
@@ -50,7 +56,7 @@ class MTAModule:
             try:
                 from nyct_gtfs import NYCTFeed  # type: ignore[import-not-found]
                 self.NYCTFeed = NYCTFeed
-                print(f"[MTA Module] Initialized for stop {self.stop_id}, direction {self.direction}, lines {self.lines}")
+                print(f"[MTA Module] Initialized for stops {self.stop_ids}, direction {self.direction}, lines {self.lines}")
             except ImportError as e:
                 print(f"[MTA Module] nyct-gtfs not installed: {e}")
                 self.invalid = True
@@ -84,28 +90,31 @@ class MTAModule:
             for line in self.lines:
                 try:
                     feed = self.NYCTFeed(line)
-                    stop_id_with_dir = f"{self.stop_id}{self.direction}"
-                    
-                    # Filter trips headed to our stop
-                    trips = feed.filter_trips(
-                        line_id=[line.upper()],
-                        headed_for_stop_id=[stop_id_with_dir],
-                        underway=True
-                    )
-                    
                     times_for_line = []
-                    for trip in trips:
-                        # Find the stop time for our stop
-                        for stop_update in trip.stop_time_updates:
-                            if stop_update.stop_id == stop_id_with_dir:
-                                arrival_time = stop_update.arrival
-                                if arrival_time:
-                                    minutes_away = max(0, int((arrival_time.timestamp() - current_time) / 60))
-                                    times_for_line.append({
-                                        'minutes': minutes_away,
-                                        'arrival_timestamp': arrival_time.timestamp()
-                                    })
-                                break
+                    
+                    # Try each stop ID for this line
+                    for stop_id in self.stop_ids:
+                        stop_id_with_dir = f"{stop_id}{self.direction}"
+                        
+                        # Filter trips headed to our stop
+                        trips = feed.filter_trips(
+                            line_id=[line.upper()],
+                            headed_for_stop_id=[stop_id_with_dir],
+                            underway=True
+                        )
+                        
+                        for trip in trips:
+                            # Find the stop time for our stop
+                            for stop_update in trip.stop_time_updates:
+                                if stop_update.stop_id == stop_id_with_dir:
+                                    arrival_time = stop_update.arrival
+                                    if arrival_time:
+                                        minutes_away = max(0, int((arrival_time.timestamp() - current_time) / 60))
+                                        times_for_line.append({
+                                            'minutes': minutes_away,
+                                            'arrival_timestamp': arrival_time.timestamp()
+                                        })
+                                    break
                     
                     # Sort times and keep top 3
                     times_for_line.sort(key=lambda x: x['minutes'])
