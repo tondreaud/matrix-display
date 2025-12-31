@@ -249,6 +249,8 @@
             </select>
         </div>
         
+        <button type="submit" class="btn-save" style="margin-bottom: 25px;">💾 Save & Restart</button>
+        
         <div class="form-group">
             <label for="brightness">Brightness</label>
             <div class="slider-container">
@@ -291,12 +293,12 @@
                         <label>
                             <input type="radio" name="lane1_direction" value="N" 
                                    {% if settings.lane1_direction == 'N' %}checked{% endif %}>
-                            ⬆️ Uptown
+                            N (Uptown / Manhattan)
                         </label>
                         <label>
                             <input type="radio" name="lane1_direction" value="S"
                                    {% if settings.lane1_direction == 'S' %}checked{% endif %}>
-                            ⬇️ Downtown
+                            S (Downtown / Brooklyn)
                         </label>
                     </div>
                 </div>
@@ -326,12 +328,12 @@
                         <label>
                             <input type="radio" name="lane2_direction" value="N" 
                                    {% if settings.lane2_direction == 'N' %}checked{% endif %}>
-                            ⬆️ Uptown
+                            N (Uptown / Manhattan)
                         </label>
                         <label>
                             <input type="radio" name="lane2_direction" value="S"
                                    {% if settings.lane2_direction == 'S' %}checked{% endif %}>
-                            ⬇️ Downtown
+                            S (Downtown / Brooklyn)
                         </label>
                     </div>
                 </div>
@@ -344,8 +346,6 @@
                 </div>
             </div>
         </div>
-        
-        <button type="submit" class="btn-save">💾 Save & Restart</button>
     </form>
     
     

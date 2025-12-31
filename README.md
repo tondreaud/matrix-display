@@ -36,6 +36,17 @@ If you move the device to a new location or change your WiFi:
 1. The Pi will automatically create the "MatrixDisplay-Setup" hotspot when it can't connect
 2. Follow the steps above to configure the new network
 
+## Web Interface
+
+The Matrix Display includes a web-based settings interface for easy configuration.
+
+- **URL:** `http://<pi-ip-address>:8080`
+- **Features:**
+  - Switch between Spotify and NYC Subway display modes
+  - Adjust brightness
+  - Configure subway stations and lines (two independent lanes)
+  - Turn display on/off
+
 ---
 
 ## Pi Setup (For Developers)
