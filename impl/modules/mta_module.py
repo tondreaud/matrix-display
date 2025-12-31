@@ -104,6 +104,11 @@ class MTAModule:
                         )
                         
                         for trip in trips:
+                            # Get the terminal station (last stop on the trip)
+                            terminal_station = None
+                            if trip.stop_time_updates:
+                                terminal_station = trip.stop_time_updates[-1].stop_name
+                            
                             # Find the stop time for our stop
                             for stop_update in trip.stop_time_updates:
                                 if stop_update.stop_id == stop_id_with_dir:
@@ -112,16 +117,19 @@ class MTAModule:
                                         minutes_away = max(0, int((arrival_time.timestamp() - current_time) / 60))
                                         times_for_line.append({
                                             'minutes': minutes_away,
-                                            'arrival_timestamp': arrival_time.timestamp()
+                                            'arrival_timestamp': arrival_time.timestamp(),
+                                            'terminal': terminal_station
                                         })
                                     break
                     
                     # Sort times and keep top 3
                     times_for_line.sort(key=lambda x: x['minutes'])
                     if times_for_line:
+                        # Use the terminal station from the first train as the direction
+                        terminal = times_for_line[0].get('terminal') or self._get_direction_name()
                         line_arrivals[line.upper()] = {
                             'line': line.upper(),
-                            'direction': self._get_direction_name(),
+                            'direction': terminal,
                             'times': times_for_line[:3],
                             'color': self.get_line_color(line)
                         }
