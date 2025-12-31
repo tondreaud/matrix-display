@@ -273,41 +273,73 @@
         
         <div class="form-group" id="subway-settings">
             <label>Subway Configuration</label>
-            <div class="subway-settings">
-                <h3>Station & Lines</h3>
-                <p class="help-text" style="margin-bottom: 15px; color: #aaa;">
-                    The display checks all configured stop IDs and shows the next 2 trains arriving from any of your configured lines.
-                </p>
+            
+            <!-- Lane 1 (Top Row) -->
+            <div class="subway-settings" style="margin-bottom: 15px;">
+                <h3>🔼 Lane 1 (Top Row)</h3>
                 
                 <div class="form-group">
-                    <label for="stop_ids">Stop IDs (comma-separated)</label>
-                    <input type="text" name="stop_ids" id="stop_ids" 
-                           value="{{ settings.stop_ids }}" placeholder="e.g., 635,R20,L03">
-                    <p class="help-text">
-                        Union Sq: 635 (4/5/6), R20 (N/Q/R/W), L03 (L)
-                    </p>
+                    <label for="lane1_stop_ids">Stop IDs</label>
+                    <input type="text" name="lane1_stop_ids" id="lane1_stop_ids" 
+                           value="{{ settings.lane1_stop_ids }}" placeholder="e.g., R20">
+                    <p class="help-text">Union Sq: 635 (4/5/6), R20 (N/Q/R/W), L03 (L)</p>
                 </div>
                 
                 <div class="form-group">
                     <label>Direction</label>
                     <div class="direction-options">
                         <label>
-                            <input type="radio" name="direction" value="N" 
-                                   {% if settings.direction == 'N' %}checked{% endif %}>
+                            <input type="radio" name="lane1_direction" value="N" 
+                                   {% if settings.lane1_direction == 'N' %}checked{% endif %}>
                             ⬆️ Uptown
                         </label>
                         <label>
-                            <input type="radio" name="direction" value="S"
-                                   {% if settings.direction == 'S' %}checked{% endif %}>
+                            <input type="radio" name="lane1_direction" value="S"
+                                   {% if settings.lane1_direction == 'S' %}checked{% endif %}>
                             ⬇️ Downtown
                         </label>
                     </div>
                 </div>
                 
                 <div class="form-group" style="margin-bottom: 0;">
-                    <label for="lines">Lines (comma-separated)</label>
-                    <input type="text" name="lines" id="lines" 
-                           value="{{ settings.lines }}" placeholder="e.g., 4,5,6">
+                    <label for="lane1_lines">Lines</label>
+                    <input type="text" name="lane1_lines" id="lane1_lines" 
+                           value="{{ settings.lane1_lines }}" placeholder="e.g., N,Q">
+                    <p class="help-text">Examples: 4,5,6 or A,C,E or L or N,Q,R,W</p>
+                </div>
+            </div>
+            
+            <!-- Lane 2 (Bottom Row) -->
+            <div class="subway-settings">
+                <h3>🔽 Lane 2 (Bottom Row)</h3>
+                
+                <div class="form-group">
+                    <label for="lane2_stop_ids">Stop IDs</label>
+                    <input type="text" name="lane2_stop_ids" id="lane2_stop_ids" 
+                           value="{{ settings.lane2_stop_ids }}" placeholder="e.g., L03">
+                    <p class="help-text">Union Sq: 635 (4/5/6), R20 (N/Q/R/W), L03 (L)</p>
+                </div>
+                
+                <div class="form-group">
+                    <label>Direction</label>
+                    <div class="direction-options">
+                        <label>
+                            <input type="radio" name="lane2_direction" value="N" 
+                                   {% if settings.lane2_direction == 'N' %}checked{% endif %}>
+                            ⬆️ Uptown
+                        </label>
+                        <label>
+                            <input type="radio" name="lane2_direction" value="S"
+                                   {% if settings.lane2_direction == 'S' %}checked{% endif %}>
+                            ⬇️ Downtown
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="lane2_lines">Lines</label>
+                    <input type="text" name="lane2_lines" id="lane2_lines" 
+                           value="{{ settings.lane2_lines }}" placeholder="e.g., L">
                     <p class="help-text">Examples: 4,5,6 or A,C,E or L or N,Q,R,W</p>
                 </div>
             </div>
