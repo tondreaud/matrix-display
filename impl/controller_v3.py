@@ -1,10 +1,35 @@
-import os, inspect, sys, math, time, configparser, argparse, warnings
+import os, inspect, sys, math, time, json, configparser, argparse, warnings
+from datetime import datetime
 from PIL import Image
 
 from apps_v2 import spotify_player
 from apps_v2 import subway_display
 from modules import spotify_module
 from modules import mta_module
+
+
+SCHEDULE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.schedule')
+
+def is_schedule_sleeping():
+    """Check if the display should be off based on the schedule file."""
+    if not os.path.exists(SCHEDULE_PATH):
+        return False
+    try:
+        with open(SCHEDULE_PATH, 'r') as f:
+            schedule = json.load(f)
+        if not schedule.get('enabled', False):
+            return False
+        now = datetime.now().time()
+        off_time = datetime.strptime(schedule['off_time'], '%H:%M').time()
+        on_time = datetime.strptime(schedule['on_time'], '%H:%M').time()
+        # If off_time > on_time, sleep window crosses midnight (e.g. 23:00 - 07:00)
+        if off_time > on_time:
+            return now >= off_time or now < on_time
+        else:
+            # Same-day window (e.g. 01:00 - 06:00)
+            return off_time <= now < on_time
+    except Exception:
+        return False
 
 
 def main():
@@ -18,7 +43,7 @@ def main():
 
     parser.add_argument('-f', '--fullscreen', action='store_true', help='Always display album art in fullscreen (Spotify mode)')
     parser.add_argument('-e', '--emulated', action='store_true', help='Run in a matrix emulator')
-    parser.add_argument('-m', '--mode', choices=['spotify', 'subway'], default='spotify', help='Display mode: spotify or subway')
+    parser.add_argument('-m', '--mode', choices=['spotify', 'subway', 'auto'], default='auto', help='Display mode: spotify, subway, or auto (spotify with subway fallback)')
     args = parser.parse_args()
 
     is_emulated = args.emulated
@@ -47,6 +72,12 @@ def main():
         print("Starting in SUBWAY mode...")
         modules = { 'mta': mta_module.MTAModule(config) }
         app = subway_display.SubwayScreen(config, modules)
+    elif mode == 'auto':
+        print("Starting in AUTO mode (spotify with subway fallback)...")
+        spotify_mod = spotify_module.SpotifyModule(config)
+        mta_mod = mta_module.MTAModule(config)
+        spotify_app = spotify_player.SpotifyScreen(config, { 'spotify': spotify_mod }, is_full_screen_always)
+        subway_app = subway_display.SubwayScreen(config, { 'mta': mta_mod })
     else:
         print("Starting in SPOTIFY mode...")
         modules = { 'spotify': spotify_module.SpotifyModule(config) }
@@ -67,9 +98,32 @@ def main():
     black_screen = Image.new("RGB", (canvas_width, canvas_height), (0,0,0))
     last_active_time = math.floor(time.time())
 
+    # Auto mode: grace period before switching to subway (avoids flicker on brief pauses)
+    auto_fallback_delay = 10  # seconds of no spotify activity before showing subway
+    spotify_inactive_since = None
+
     # generate image
     while(True):
-        frame, is_active = app.generate()
+        if mode == 'auto':
+            spotify_frame, spotify_active = spotify_app.generate()
+
+            # Track how long spotify has been inactive
+            if spotify_active:
+                spotify_inactive_since = None
+            elif spotify_inactive_since is None:
+                spotify_inactive_since = math.floor(time.time())
+
+            # Use subway fallback if spotify has been inactive long enough
+            use_subway = (spotify_inactive_since is not None and
+                          math.floor(time.time()) - spotify_inactive_since >= auto_fallback_delay)
+
+            if use_subway:
+                frame, is_active = subway_app.generate()
+            else:
+                frame, is_active = spotify_frame, spotify_active
+        else:
+            frame, is_active = app.generate()
+
         current_time = math.floor(time.time())
 
         if frame is not None:
@@ -78,6 +132,9 @@ def main():
             elif current_time - last_active_time >= shutdown_delay:
                 frame = black_screen
         else:
+            frame = black_screen
+
+        if is_schedule_sleeping():
             frame = black_screen
 
         matrix.SetImage(frame)

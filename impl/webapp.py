@@ -3,6 +3,7 @@
 
 import os
 import sys
+import json
 import subprocess
 import configparser
 from flask import Flask, render_template, request, redirect, url_for
@@ -33,7 +34,7 @@ def get_current_mode():
     if os.path.exists(mode_file):
         with open(mode_file, 'r') as f:
             return f.read().strip()
-    return 'spotify'
+    return 'auto'
 
 def set_current_mode(mode):
     """Save current mode to file."""
@@ -68,6 +69,20 @@ def set_fullscreen(enabled):
     with open(fs_file, 'w') as f:
         f.write('true' if enabled else 'false')
 
+SCHEDULE_PATH = os.path.join(os.path.dirname(__file__), '.schedule')
+
+def get_schedule():
+    """Get schedule settings. Returns dict with enabled, off_time, on_time."""
+    if os.path.exists(SCHEDULE_PATH):
+        with open(SCHEDULE_PATH, 'r') as f:
+            return json.load(f)
+    return {'enabled': False, 'off_time': '23:00', 'on_time': '07:00'}
+
+def set_schedule(enabled, off_time, on_time):
+    """Save schedule settings."""
+    with open(SCHEDULE_PATH, 'w') as f:
+        json.dump({'enabled': enabled, 'off_time': off_time, 'on_time': on_time}, f)
+
 @app.route('/')
 def index():
     """Display the configuration form."""
@@ -87,8 +102,9 @@ def index():
         'lane2_direction': config.get('SubwayLane2', 'direction', fallback='S'),
         'lane2_lines': config.get('SubwayLane2', 'lines', fallback='L'),
         'display_on': get_display_status(),
+        'schedule': get_schedule(),
     }
-    
+
     return render_template('index.html', settings=settings)
 
 @app.route('/save', methods=['POST'])
@@ -125,7 +141,13 @@ def save():
     
     fullscreen = request.form.get('fullscreen') == 'on'
     set_fullscreen(fullscreen)
-    
+
+    # Save schedule
+    schedule_enabled = request.form.get('schedule_enabled') == 'on'
+    off_time = request.form.get('schedule_off_time', '23:00')
+    on_time = request.form.get('schedule_on_time', '07:00')
+    set_schedule(schedule_enabled, off_time, on_time)
+
     # Write config
     write_config(config)
     
@@ -139,6 +161,13 @@ def save():
     
     return redirect(url_for('index'))
 
+
+@app.route('/schedule/toggle', methods=['POST'])
+def schedule_toggle():
+    """Toggle the sleep schedule on/off."""
+    schedule = get_schedule()
+    set_schedule(not schedule['enabled'], schedule['off_time'], schedule['on_time'])
+    return redirect(url_for('index'))
 
 @app.route('/display/toggle', methods=['POST'])
 def display_toggle():

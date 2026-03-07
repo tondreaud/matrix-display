@@ -219,6 +219,31 @@
             font-size: 14px;
             text-transform: uppercase;
         }
+        .schedule-settings {
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 10px;
+            background: #0f0f23;
+        }
+        .schedule-settings h3 {
+            margin-top: 0;
+            color: #ffab40;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+        .schedule-times {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+        }
+        .schedule-times .form-group {
+            flex: 1;
+            margin-bottom: 0;
+        }
+        .schedule-times input[type="time"] {
+            width: 100%;
+        }
     </style>
 </head>
 <body>
@@ -240,10 +265,27 @@
         </form>
     </div>
     
+    <!-- Schedule Toggle Switch -->
+    <div class="power-toggle-container">
+        <div>
+            <div class="power-label">Sleep Schedule</div>
+            <div class="power-status {% if settings.schedule.enabled %}on{% else %}off{% endif %}">
+                {% if settings.schedule.enabled %}{{ settings.schedule.off_time }} - {{ settings.schedule.on_time }}{% else %}Disabled{% endif %}
+            </div>
+        </div>
+        <form method="POST" action="/schedule/toggle" id="schedule-toggle-form">
+            <label class="switch">
+                <input type="checkbox" {% if settings.schedule.enabled %}checked{% endif %} onchange="document.getElementById('schedule-toggle-form').submit()">
+                <span class="switch-slider"></span>
+            </label>
+        </form>
+    </div>
+
     <form method="POST" action="/save">
         <div class="form-group">
             <label for="mode">Display Mode</label>
             <select name="mode" id="mode" onchange="toggleModeSettings()">
+                <option value="auto" {% if settings.mode == 'auto' %}selected{% endif %}>🔄 Auto (Spotify → Subway fallback)</option>
                 <option value="spotify" {% if settings.mode == 'spotify' %}selected{% endif %}>🎵 Spotify</option>
                 <option value="subway" {% if settings.mode == 'subway' %}selected{% endif %}>🚇 NYC Subway</option>
             </select>
@@ -261,6 +303,31 @@
             </div>
         </div>
         
+        <div class="form-group">
+            <label>Sleep Schedule</label>
+            <div class="schedule-settings">
+                <label class="checkbox-container">
+                    <input type="checkbox" name="schedule_enabled" id="schedule_enabled"
+                           {% if settings.schedule.enabled %}checked{% endif %}
+                           onchange="toggleScheduleTimes()">
+                    <span>Enable sleep schedule</span>
+                </label>
+                <div id="schedule-times" class="schedule-times">
+                    <div class="form-group">
+                        <label for="schedule_off_time">Shut off</label>
+                        <input type="time" name="schedule_off_time" id="schedule_off_time"
+                               value="{{ settings.schedule.off_time }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="schedule_on_time">Wake up</label>
+                        <input type="time" name="schedule_on_time" id="schedule_on_time"
+                               value="{{ settings.schedule.on_time }}">
+                    </div>
+                </div>
+                <p class="help-text">Display will show a blank screen between shut off and wake up times</p>
+            </div>
+        </div>
+
         <div class="form-group" id="spotify-settings">
             <label>Spotify Settings</label>
             <div class="spotify-settings">
@@ -359,12 +426,18 @@
             const spotifySettings = document.getElementById('spotify-settings');
             const subwaySettings = document.getElementById('subway-settings');
             
-            spotifySettings.style.display = (mode === 'spotify') ? 'block' : 'none';
-            subwaySettings.style.display = (mode === 'subway') ? 'block' : 'none';
+            spotifySettings.style.display = (mode === 'spotify' || mode === 'auto') ? 'block' : 'none';
+            subwaySettings.style.display = (mode === 'subway' || mode === 'auto') ? 'block' : 'none';
         }
         
+        function toggleScheduleTimes() {
+            const enabled = document.getElementById('schedule_enabled').checked;
+            document.getElementById('schedule-times').style.display = enabled ? 'flex' : 'none';
+        }
+
         // Initial toggle
         toggleModeSettings();
+        toggleScheduleTimes();
     </script>
 </body>
 </html>
