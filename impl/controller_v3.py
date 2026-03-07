@@ -6,6 +6,7 @@ from apps_v2 import spotify_player
 from apps_v2 import subway_display
 from modules import spotify_module
 from modules import mta_module
+from modules import bart_module
 
 
 SCHEDULE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.schedule')
@@ -67,17 +68,29 @@ def main():
         print("no config file found")
         sys.exit()
 
+    # Determine transit city (nyc or sf)
+    transit_city = config.get('Transit', 'city', fallback='nyc').lower()
+
+    def create_transit_module():
+        if transit_city == 'sf':
+            print(f"Using BART transit module (San Francisco)")
+            return bart_module.BARTModule(config)
+        else:
+            print(f"Using MTA transit module (New York City)")
+            return mta_module.MTAModule(config)
+
     # Initialize modules and app based on mode
     if mode == 'subway':
-        print("Starting in SUBWAY mode...")
-        modules = { 'mta': mta_module.MTAModule(config) }
+        print("Starting in TRANSIT mode...")
+        transit_mod = create_transit_module()
+        modules = { 'mta': transit_mod }
         app = subway_display.SubwayScreen(config, modules)
     elif mode == 'auto':
-        print("Starting in AUTO mode (spotify with subway fallback)...")
+        print("Starting in AUTO mode (spotify with transit fallback)...")
         spotify_mod = spotify_module.SpotifyModule(config)
-        mta_mod = mta_module.MTAModule(config)
+        transit_mod = create_transit_module()
         spotify_app = spotify_player.SpotifyScreen(config, { 'spotify': spotify_mod }, is_full_screen_always)
-        subway_app = subway_display.SubwayScreen(config, { 'mta': mta_mod })
+        subway_app = subway_display.SubwayScreen(config, { 'mta': transit_mod })
     else:
         print("Starting in SPOTIFY mode...")
         modules = { 'spotify': spotify_module.SpotifyModule(config) }
