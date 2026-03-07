@@ -303,16 +303,12 @@
             </div>
         </div>
         
+        {% if settings.schedule.enabled %}
         <div class="form-group">
-            <label>Sleep Schedule</label>
+            <label>Sleep Schedule Times</label>
             <div class="schedule-settings">
-                <label class="checkbox-container">
-                    <input type="checkbox" name="schedule_enabled" id="schedule_enabled"
-                           {% if settings.schedule.enabled %}checked{% endif %}
-                           onchange="toggleScheduleTimes()">
-                    <span>Enable sleep schedule</span>
-                </label>
-                <div id="schedule-times" class="schedule-times">
+                <input type="hidden" name="schedule_enabled" value="on">
+                <div class="schedule-times" style="display: flex;">
                     <div class="form-group">
                         <label for="schedule_off_time">Shut off</label>
                         <input type="time" name="schedule_off_time" id="schedule_off_time"
@@ -327,6 +323,7 @@
                 <p class="help-text">Display will show a blank screen between shut off and wake up times</p>
             </div>
         </div>
+        {% endif %}
 
         <div class="form-group" id="spotify-settings">
             <label>Spotify Settings</label>
@@ -430,14 +427,8 @@
             subwaySettings.style.display = (mode === 'subway' || mode === 'auto') ? 'block' : 'none';
         }
         
-        function toggleScheduleTimes() {
-            const enabled = document.getElementById('schedule_enabled').checked;
-            document.getElementById('schedule-times').style.display = enabled ? 'flex' : 'none';
-        }
-
         // Initial toggle
         toggleModeSettings();
-        toggleScheduleTimes();
     </script>
 </body>
 </html>
