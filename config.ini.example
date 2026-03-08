@@ -12,17 +12,16 @@ client_secret = YOUR_CLIENT_SECRET_HERE
 redirect_uri = http://127.0.0.1:8080/callback
 ; device_whitelist = ['Marantz AVR', 'Samsung TV']
 
-[Subway]
-; Stop ID from MTA GTFS data
-; Find stop IDs at: https://github.com/Andrew-Dickinson/nyct-gtfs
-; East Village stations:
-;   L06 = 1st Ave (L)
-;   F14 = 2nd Ave (F,M)  
-;   636 = Astor Place (6)
-;   R20 = 8th St-NYU (N,R,W)
-stop_id = 635
-; Direction: N (uptown) or S (downtown/brooklyn)
+[SubwayLane1]
+; NYC MTA - Stop ID from GTFS data (https://github.com/Andrew-Dickinson/nyct-gtfs)
+; East Village: L06 (L), F14 (F,M), 636 (6), R20 (N,R,W)
+stop_ids = R20
+direction = N
+lines = N,Q
+
+[SubwayLane2]
+stop_ids = L03
 direction = S
-; Comma-separated subway lines to show
-lines = 4,5,6
+lines = L
+
 

@@ -167,12 +167,22 @@ class SubwayScreen:
         direction = line_data['direction']
         times = line_data['times']
         
-        # Paste pre-rendered circle sprite (like mta-portal's background image approach)
+        # Paste pre-rendered circle sprite, or draw a colored circle for BART lines
         if line in self.circle_sprites:
             sprite = self.circle_sprites[line]
-            # Center vertically in row (sprite is 19x19, row is ~30px)
             sprite_y = y_pos + 6
             frame.paste(sprite, (self.circle_x, sprite_y))
+        else:
+            # Draw a solid colored circle for lines without sprites (e.g. BART)
+            circle_size = 19
+            sprite_y = y_pos + 6
+            cx = self.circle_x + circle_size // 2
+            cy = sprite_y + circle_size // 2
+            r = circle_size // 2
+            draw.ellipse(
+                [cx - r, cy - r, cx + r, cy + r],
+                fill=line_data.get('color', (255, 255, 255))
+            )
         
         # Draw direction text in cyan/blue (first line of text) - with scrolling if needed
         dest_y = y_pos + 4
