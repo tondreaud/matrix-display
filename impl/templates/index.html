@@ -424,6 +424,20 @@
                                        value="{{ settings.schedule.on_time }}">
                             </div>
                         </div>
+                        <div class="field" style="margin-top:10px;">
+                            <label for="schedule_timezone">Time Zone</label>
+                            <select name="schedule_timezone" id="schedule_timezone">
+                                <option value="America/New_York" {% if settings.schedule.timezone == 'America/New_York' %}selected{% endif %}>Eastern (EST/EDT)</option>
+                                <option value="America/Chicago" {% if settings.schedule.timezone == 'America/Chicago' %}selected{% endif %}>Central (CST/CDT)</option>
+                                <option value="America/Denver" {% if settings.schedule.timezone == 'America/Denver' %}selected{% endif %}>Mountain (MST/MDT)</option>
+                                <option value="America/Los_Angeles" {% if settings.schedule.timezone == 'America/Los_Angeles' %}selected{% endif %}>Pacific (PST/PDT)</option>
+                                <option value="America/Anchorage" {% if settings.schedule.timezone == 'America/Anchorage' %}selected{% endif %}>Alaska (AKST/AKDT)</option>
+                                <option value="Pacific/Honolulu" {% if settings.schedule.timezone == 'Pacific/Honolulu' %}selected{% endif %}>Hawaii (HST)</option>
+                                <option value="Europe/London" {% if settings.schedule.timezone == 'Europe/London' %}selected{% endif %}>UK (GMT/BST)</option>
+                                <option value="Europe/Paris" {% if settings.schedule.timezone == 'Europe/Paris' %}selected{% endif %}>Central Europe (CET/CEST)</option>
+                                <option value="UTC" {% if settings.schedule.timezone == 'UTC' %}selected{% endif %}>UTC</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 

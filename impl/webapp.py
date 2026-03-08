@@ -72,16 +72,26 @@ def set_fullscreen(enabled):
 SCHEDULE_PATH = os.path.join(os.path.dirname(__file__), '.schedule')
 
 def get_schedule():
-    """Get schedule settings. Returns dict with enabled, off_time, on_time."""
+    """Get schedule settings. Returns dict with enabled, off_time, on_time, timezone."""
     if os.path.exists(SCHEDULE_PATH):
         with open(SCHEDULE_PATH, 'r') as f:
-            return json.load(f)
-    return {'enabled': False, 'off_time': '23:00', 'on_time': '07:00'}
+            data = json.load(f)
+            if 'timezone' not in data:
+                data['timezone'] = 'America/New_York'
+            return data
+    return {'enabled': False, 'off_time': '23:00', 'on_time': '07:00', 'timezone': 'America/New_York'}
 
-def set_schedule(enabled, off_time, on_time):
-    """Save schedule settings."""
+def set_schedule(enabled, off_time, on_time, timezone):
+    """Save schedule settings and apply timezone to system clock."""
     with open(SCHEDULE_PATH, 'w') as f:
-        json.dump({'enabled': enabled, 'off_time': off_time, 'on_time': on_time}, f)
+        json.dump({'enabled': enabled, 'off_time': off_time, 'on_time': on_time, 'timezone': timezone}, f)
+    # Apply timezone to system clock on Raspberry Pi
+    if IS_RASPBERRY_PI:
+        try:
+            subprocess.run(['sudo', 'timedatectl', 'set-timezone', timezone],
+                          capture_output=True, timeout=5)
+        except Exception:
+            pass
 
 @app.route('/')
 def index():
@@ -175,7 +185,8 @@ def save():
     schedule_enabled = request.form.get('schedule_enabled') == 'on'
     off_time = request.form.get('schedule_off_time', '23:00')
     on_time = request.form.get('schedule_on_time', '07:00')
-    set_schedule(schedule_enabled, off_time, on_time)
+    timezone = request.form.get('schedule_timezone', 'America/New_York')
+    set_schedule(schedule_enabled, off_time, on_time, timezone)
 
     # Write config
     write_config(config)
@@ -195,7 +206,7 @@ def save():
 def schedule_toggle():
     """Toggle the sleep schedule on/off."""
     schedule = get_schedule()
-    set_schedule(not schedule['enabled'], schedule['off_time'], schedule['on_time'])
+    set_schedule(not schedule['enabled'], schedule['off_time'], schedule['on_time'], schedule.get('timezone', 'America/New_York'))
     return redirect(url_for('index'))
 
 @app.route('/display/toggle', methods=['POST'])
