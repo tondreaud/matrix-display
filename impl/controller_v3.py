@@ -1,36 +1,83 @@
 import os, inspect, sys, math, time, json, configparser, argparse, warnings
-from datetime import datetime
+from datetime import datetime, timedelta
 from PIL import Image
 
 from apps_v2 import spotify_player
 from apps_v2 import subway_display
 from modules import spotify_module
 from modules import mta_module
-from modules import bart_module
 
 
 SCHEDULE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.schedule')
 
-def is_schedule_sleeping():
-    """Check if the display should be off based on the schedule file."""
+SUNRISE_DURATION_MINUTES = 30
+
+def _read_schedule():
+    """Read and parse the schedule file. Returns dict or None."""
     if not os.path.exists(SCHEDULE_PATH):
-        return False
+        return None
     try:
         with open(SCHEDULE_PATH, 'r') as f:
-            schedule = json.load(f)
-        if not schedule.get('enabled', False):
-            return False
-        now = datetime.now().time()
-        off_time = datetime.strptime(schedule['off_time'], '%H:%M').time()
-        on_time = datetime.strptime(schedule['on_time'], '%H:%M').time()
-        # If off_time > on_time, sleep window crosses midnight (e.g. 23:00 - 07:00)
-        if off_time > on_time:
-            return now >= off_time or now < on_time
-        else:
-            # Same-day window (e.g. 01:00 - 06:00)
-            return off_time <= now < on_time
+            return json.load(f)
     except Exception:
+        return None
+
+def is_schedule_sleeping():
+    """Check if the display should be off based on the schedule file."""
+    schedule = _read_schedule()
+    if not schedule or not schedule.get('enabled', False):
         return False
+    now = datetime.now().time()
+    off_time = datetime.strptime(schedule['off_time'], '%H:%M').time()
+    on_time = datetime.strptime(schedule['on_time'], '%H:%M').time()
+    # Sunrise starts 30 min before on_time — not sleeping during sunrise
+    sunrise_start = (datetime.combine(datetime.today(), on_time) - timedelta(minutes=SUNRISE_DURATION_MINUTES)).time()
+    # If off_time > on_time, sleep window crosses midnight (e.g. 23:00 - 07:00)
+    if off_time > on_time:
+        sleeping = now >= off_time or now < on_time
+    else:
+        sleeping = off_time <= now < on_time
+    if sleeping and get_sunrise_progress() > 0:
+        return False  # In sunrise window, not sleeping
+    return sleeping
+
+def get_sunrise_progress():
+    """Return sunrise progress 0.0-1.0 if within 30 min before wake time, else 0."""
+    schedule = _read_schedule()
+    if not schedule or not schedule.get('enabled', False):
+        return 0.0
+    now = datetime.now()
+    on_time = datetime.strptime(schedule['on_time'], '%H:%M').time()
+    wake_dt = datetime.combine(now.date(), on_time)
+    sunrise_start_dt = wake_dt - timedelta(minutes=SUNRISE_DURATION_MINUTES)
+    # Handle midnight crossing: if sunrise_start is tomorrow relative to now
+    if now.time() > on_time and on_time < datetime.strptime(schedule.get('off_time', '23:00'), '%H:%M').time():
+        wake_dt += timedelta(days=1)
+        sunrise_start_dt = wake_dt - timedelta(minutes=SUNRISE_DURATION_MINUTES)
+    if sunrise_start_dt <= now < wake_dt:
+        elapsed = (now - sunrise_start_dt).total_seconds()
+        total = SUNRISE_DURATION_MINUTES * 60
+        return min(1.0, elapsed / total)
+    return 0.0
+
+def generate_sunrise_frame(progress, width=64, height=64):
+    """Generate a warm sunrise gradient frame. Progress 0.0 (dark) to 1.0 (bright warm)."""
+    img = Image.new("RGB", (width, height))
+    pixels = img.load()
+    # Color stops: deep red -> orange -> amber -> warm yellow
+    # At low progress, very dim deep red. At full progress, bright warm light.
+    for y in range(height):
+        # Vertical gradient: warmer/brighter at bottom (horizon), cooler at top
+        vert = 1.0 - (y / height)  # 1.0 at top, 0.0 at bottom
+        horizon_boost = 1.0 - vert * 0.5  # bottom is brighter
+        intensity = progress * horizon_boost
+        # Blend from deep red (low progress) to bright warm yellow (high progress)
+        r = int(min(255, intensity * 255))
+        g = int(min(255, intensity * 200 * progress))  # green ramps up for bright yellow
+        b = int(min(255, intensity * 40 * progress * progress))  # slight warmth
+        for x in range(width):
+            pixels[x, y] = (r, g, b)
+    return img
 
 
 def main():
@@ -68,27 +115,16 @@ def main():
         print("no config file found")
         sys.exit()
 
-    # Determine transit city (nyc or sf)
-    transit_city = config.get('Transit', 'city', fallback='nyc').lower()
-
-    def create_transit_module():
-        if transit_city == 'sf':
-            print(f"Using BART transit module (San Francisco)")
-            return bart_module.BARTModule(config)
-        else:
-            print(f"Using MTA transit module (New York City)")
-            return mta_module.MTAModule(config)
-
     # Initialize modules and app based on mode
     if mode == 'subway':
         print("Starting in TRANSIT mode...")
-        transit_mod = create_transit_module()
+        transit_mod = mta_module.MTAModule(config)
         modules = { 'mta': transit_mod }
         app = subway_display.SubwayScreen(config, modules)
     elif mode == 'auto':
         print("Starting in AUTO mode (spotify with transit fallback)...")
         spotify_mod = spotify_module.SpotifyModule(config)
-        transit_mod = create_transit_module()
+        transit_mod = mta_module.MTAModule(config)
         spotify_app = spotify_player.SpotifyScreen(config, { 'spotify': spotify_mod }, is_full_screen_always)
         subway_app = subway_display.SubwayScreen(config, { 'mta': transit_mod })
     else:
@@ -147,7 +183,10 @@ def main():
         else:
             frame = black_screen
 
-        if is_schedule_sleeping():
+        sunrise_progress = get_sunrise_progress()
+        if sunrise_progress > 0:
+            frame = generate_sunrise_frame(sunrise_progress, canvas_width, canvas_height)
+        elif is_schedule_sleeping():
             frame = black_screen
 
         matrix.SetImage(frame)

@@ -12,10 +12,6 @@ client_secret = YOUR_CLIENT_SECRET_HERE
 redirect_uri = http://127.0.0.1:8080/callback
 ; device_whitelist = ['Marantz AVR', 'Samsung TV']
 
-[Transit]
-; City for transit display: nyc or sf
-city = nyc
-
 [SubwayLane1]
 ; NYC MTA - Stop ID from GTFS data (https://github.com/Andrew-Dickinson/nyct-gtfs)
 ; East Village: L06 (L), F14 (F,M), 636 (6), R20 (N,R,W)
@@ -28,16 +24,4 @@ stop_ids = L03
 direction = S
 lines = L
 
-[BARTLane1]
-; SF BART - Station abbreviation (embr, mont, powl, 16th, 24th, civc, etc.)
-station = embr
-; Direction filter: n (north), s (south), or empty for all
-direction =
-; Destination filter (optional): Richmond, Antioch, Millbrae, SFO, Dublin, Daly City, etc.
-destinations =
-
-[BARTLane2]
-station = embr
-direction =
-destinations =
 

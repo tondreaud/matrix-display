@@ -445,155 +445,68 @@
                 <!-- Fullscreen always on -->
                 <input type="hidden" name="fullscreen" value="on">
 
-                <!-- Transit Settings -->
+                <!-- Transit Settings (NYC MTA) -->
                 <div id="transit-settings" class="card grid-full collapsible">
-                    <div class="card-label">Transit</div>
-                    <div class="field">
-                        <label for="transit_city">City</label>
-                        <select name="transit_city" id="transit_city" onchange="toggleCitySettings()">
-                            <option value="nyc" {% if settings.transit_city == 'nyc' %}selected{% endif %}>New York City &mdash; MTA Subway</option>
-                            <option value="sf" {% if settings.transit_city == 'sf' %}selected{% endif %}>San Francisco &mdash; BART</option>
-                        </select>
-                    </div>
-
-                    <!-- NYC MTA -->
-                    <div id="nyc-settings">
-                        <div class="lanes-grid">
-                            <div class="lane">
-                                <div class="lane-header">Lane 1 &middot; Top Row</div>
-                                <div class="field">
-                                    <label for="lane1_stop_ids">Stop IDs</label>
-                                    <input type="text" name="lane1_stop_ids" id="lane1_stop_ids"
-                                           value="{{ settings.lane1_stop_ids }}" placeholder="R20">
-                                    <p class="hint">Union Sq: 635 (4/5/6), R20 (N/Q/R/W), L03 (L)</p>
-                                </div>
-                                <div class="field">
-                                    <label>Direction</label>
-                                    <div class="pill-group">
-                                        <label>
-                                            <input type="radio" name="lane1_direction" value="N"
-                                                   {% if settings.lane1_direction == 'N' %}checked{% endif %}>
-                                            <span class="pill">Uptown (N)</span>
-                                        </label>
-                                        <label>
-                                            <input type="radio" name="lane1_direction" value="S"
-                                                   {% if settings.lane1_direction == 'S' %}checked{% endif %}>
-                                            <span class="pill">Downtown (S)</span>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="field">
-                                    <label for="lane1_lines">Lines</label>
-                                    <input type="text" name="lane1_lines" id="lane1_lines"
-                                           value="{{ settings.lane1_lines }}" placeholder="N,Q">
-                                    <p class="hint">e.g. 4,5,6 or A,C,E or L or N,Q,R,W</p>
+                    <div class="card-label">Transit &middot; NYC Subway</div>
+                    <div class="lanes-grid">
+                        <div class="lane">
+                            <div class="lane-header">Lane 1 &middot; Top Row</div>
+                            <div class="field">
+                                <label for="lane1_stop_ids">Stop IDs</label>
+                                <input type="text" name="lane1_stop_ids" id="lane1_stop_ids"
+                                       value="{{ settings.lane1_stop_ids }}" placeholder="R20">
+                                <p class="hint">Union Sq: 635 (4/5/6), R20 (N/Q/R/W), L03 (L)</p>
+                            </div>
+                            <div class="field">
+                                <label>Direction</label>
+                                <div class="pill-group">
+                                    <label>
+                                        <input type="radio" name="lane1_direction" value="N"
+                                               {% if settings.lane1_direction == 'N' %}checked{% endif %}>
+                                        <span class="pill">Uptown (N)</span>
+                                    </label>
+                                    <label>
+                                        <input type="radio" name="lane1_direction" value="S"
+                                               {% if settings.lane1_direction == 'S' %}checked{% endif %}>
+                                        <span class="pill">Downtown (S)</span>
+                                    </label>
                                 </div>
                             </div>
-                            <div class="lane">
-                                <div class="lane-header">Lane 2 &middot; Bottom Row</div>
-                                <div class="field">
-                                    <label for="lane2_stop_ids">Stop IDs</label>
-                                    <input type="text" name="lane2_stop_ids" id="lane2_stop_ids"
-                                           value="{{ settings.lane2_stop_ids }}" placeholder="L03">
-                                    <p class="hint">Union Sq: 635 (4/5/6), R20 (N/Q/R/W), L03 (L)</p>
-                                </div>
-                                <div class="field">
-                                    <label>Direction</label>
-                                    <div class="pill-group">
-                                        <label>
-                                            <input type="radio" name="lane2_direction" value="N"
-                                                   {% if settings.lane2_direction == 'N' %}checked{% endif %}>
-                                            <span class="pill">Uptown (N)</span>
-                                        </label>
-                                        <label>
-                                            <input type="radio" name="lane2_direction" value="S"
-                                                   {% if settings.lane2_direction == 'S' %}checked{% endif %}>
-                                            <span class="pill">Downtown (S)</span>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="field">
-                                    <label for="lane2_lines">Lines</label>
-                                    <input type="text" name="lane2_lines" id="lane2_lines"
-                                           value="{{ settings.lane2_lines }}" placeholder="L">
-                                    <p class="hint">e.g. 4,5,6 or A,C,E or L or N,Q,R,W</p>
-                                </div>
+                            <div class="field">
+                                <label for="lane1_lines">Lines</label>
+                                <input type="text" name="lane1_lines" id="lane1_lines"
+                                       value="{{ settings.lane1_lines }}" placeholder="N,Q">
+                                <p class="hint">e.g. 4,5,6 or A,C,E or L or N,Q,R,W</p>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- SF BART -->
-                    <div id="sf-settings">
-                        <div class="lanes-grid">
-                            <div class="lane">
-                                <div class="lane-header">Lane 1 &middot; Top Row</div>
-                                <div class="field">
-                                    <label for="bart_lane1_station">Station</label>
-                                    <input type="text" name="bart_lane1_station" id="bart_lane1_station"
-                                           value="{{ settings.bart_lane1_station }}" placeholder="embr">
-                                    <p class="hint">embr, mont, powl, 16th, 24th, civc</p>
-                                </div>
-                                <div class="field">
-                                    <label>Direction</label>
-                                    <div class="pill-group">
-                                        <label>
-                                            <input type="radio" name="bart_lane1_direction" value=""
-                                                   {% if settings.bart_lane1_direction == '' %}checked{% endif %}>
-                                            <span class="pill">All</span>
-                                        </label>
-                                        <label>
-                                            <input type="radio" name="bart_lane1_direction" value="n"
-                                                   {% if settings.bart_lane1_direction == 'n' %}checked{% endif %}>
-                                            <span class="pill">North</span>
-                                        </label>
-                                        <label>
-                                            <input type="radio" name="bart_lane1_direction" value="s"
-                                                   {% if settings.bart_lane1_direction == 's' %}checked{% endif %}>
-                                            <span class="pill">South</span>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="field">
-                                    <label for="bart_lane1_destinations">Destinations filter</label>
-                                    <input type="text" name="bart_lane1_destinations" id="bart_lane1_destinations"
-                                           value="{{ settings.bart_lane1_destinations }}" placeholder="Richmond,Antioch">
-                                    <p class="hint">Optional. Richmond, Millbrae, SFO, Antioch, Dublin, Daly City</p>
+                        <div class="lane">
+                            <div class="lane-header">Lane 2 &middot; Bottom Row</div>
+                            <div class="field">
+                                <label for="lane2_stop_ids">Stop IDs</label>
+                                <input type="text" name="lane2_stop_ids" id="lane2_stop_ids"
+                                       value="{{ settings.lane2_stop_ids }}" placeholder="L03">
+                                <p class="hint">Union Sq: 635 (4/5/6), R20 (N/Q/R/W), L03 (L)</p>
+                            </div>
+                            <div class="field">
+                                <label>Direction</label>
+                                <div class="pill-group">
+                                    <label>
+                                        <input type="radio" name="lane2_direction" value="N"
+                                               {% if settings.lane2_direction == 'N' %}checked{% endif %}>
+                                        <span class="pill">Uptown (N)</span>
+                                    </label>
+                                    <label>
+                                        <input type="radio" name="lane2_direction" value="S"
+                                               {% if settings.lane2_direction == 'S' %}checked{% endif %}>
+                                        <span class="pill">Downtown (S)</span>
+                                    </label>
                                 </div>
                             </div>
-                            <div class="lane">
-                                <div class="lane-header">Lane 2 &middot; Bottom Row</div>
-                                <div class="field">
-                                    <label for="bart_lane2_station">Station</label>
-                                    <input type="text" name="bart_lane2_station" id="bart_lane2_station"
-                                           value="{{ settings.bart_lane2_station }}" placeholder="embr">
-                                    <p class="hint">embr, mont, powl, 16th, 24th, civc</p>
-                                </div>
-                                <div class="field">
-                                    <label>Direction</label>
-                                    <div class="pill-group">
-                                        <label>
-                                            <input type="radio" name="bart_lane2_direction" value=""
-                                                   {% if settings.bart_lane2_direction == '' %}checked{% endif %}>
-                                            <span class="pill">All</span>
-                                        </label>
-                                        <label>
-                                            <input type="radio" name="bart_lane2_direction" value="n"
-                                                   {% if settings.bart_lane2_direction == 'n' %}checked{% endif %}>
-                                            <span class="pill">North</span>
-                                        </label>
-                                        <label>
-                                            <input type="radio" name="bart_lane2_direction" value="s"
-                                                   {% if settings.bart_lane2_direction == 's' %}checked{% endif %}>
-                                            <span class="pill">South</span>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="field">
-                                    <label for="bart_lane2_destinations">Destinations filter</label>
-                                    <input type="text" name="bart_lane2_destinations" id="bart_lane2_destinations"
-                                           value="{{ settings.bart_lane2_destinations }}" placeholder="Millbrae,SFO">
-                                    <p class="hint">Optional. Richmond, Millbrae, SFO, Antioch, Dublin, Daly City</p>
-                                </div>
+                            <div class="field">
+                                <label for="lane2_lines">Lines</label>
+                                <input type="text" name="lane2_lines" id="lane2_lines"
+                                       value="{{ settings.lane2_lines }}" placeholder="L">
+                                <p class="hint">e.g. 4,5,6 or A,C,E or L or N,Q,R,W</p>
                             </div>
                         </div>
                     </div>
@@ -612,16 +525,6 @@
             var transit = document.getElementById('transit-settings');
 
             transit.classList.toggle('hidden', mode === 'spotify');
-            toggleCitySettings();
-        }
-
-        function toggleCitySettings() {
-            var city = document.getElementById('transit_city').value;
-            var nyc = document.getElementById('nyc-settings');
-            var sf = document.getElementById('sf-settings');
-
-            nyc.classList.toggle('hidden', city !== 'nyc');
-            sf.classList.toggle('hidden', city !== 'sf');
         }
 
         function toggleScheduleFields() {

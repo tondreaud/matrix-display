@@ -103,8 +103,6 @@ def index():
         'mode': get_current_mode(),
         'fullscreen': get_fullscreen(),
         'brightness': config.getint('Matrix', 'brightness', fallback=50),
-        # Transit city
-        'transit_city': config.get('Transit', 'city', fallback='nyc'),
         # NYC Lane 1 (Top Row)
         'lane1_stop_ids': config.get('SubwayLane1', 'stop_ids', fallback='R20'),
         'lane1_direction': config.get('SubwayLane1', 'direction', fallback='N'),
@@ -113,14 +111,6 @@ def index():
         'lane2_stop_ids': config.get('SubwayLane2', 'stop_ids', fallback='L03'),
         'lane2_direction': config.get('SubwayLane2', 'direction', fallback='S'),
         'lane2_lines': config.get('SubwayLane2', 'lines', fallback='L'),
-        # SF BART Lane 1 (Top Row)
-        'bart_lane1_station': config.get('BARTLane1', 'station', fallback='embr'),
-        'bart_lane1_direction': config.get('BARTLane1', 'direction', fallback=''),
-        'bart_lane1_destinations': config.get('BARTLane1', 'destinations', fallback=''),
-        # SF BART Lane 2 (Bottom Row)
-        'bart_lane2_station': config.get('BARTLane2', 'station', fallback='embr'),
-        'bart_lane2_direction': config.get('BARTLane2', 'direction', fallback=''),
-        'bart_lane2_destinations': config.get('BARTLane2', 'destinations', fallback=''),
         'display_on': get_display_status(),
         'schedule': get_schedule(),
     }
@@ -137,11 +127,6 @@ def save():
         config['Matrix'] = {}
     config['Matrix']['brightness'] = request.form.get('brightness', '50')
     
-    # Update Transit city
-    if 'Transit' not in config:
-        config['Transit'] = {}
-    config['Transit']['city'] = request.form.get('transit_city', 'nyc')
-
     # Update NYC Subway Lane 1 settings (Top Row)
     if 'SubwayLane1' not in config:
         config['SubwayLane1'] = {}
@@ -156,23 +141,15 @@ def save():
     config['SubwayLane2']['direction'] = request.form.get('lane2_direction', 'S')
     config['SubwayLane2']['lines'] = request.form.get('lane2_lines', 'L')
 
-    # Update SF BART Lane 1 settings (Top Row)
-    if 'BARTLane1' not in config:
-        config['BARTLane1'] = {}
-    config['BARTLane1']['station'] = request.form.get('bart_lane1_station', 'embr')
-    config['BARTLane1']['direction'] = request.form.get('bart_lane1_direction', '')
-    config['BARTLane1']['destinations'] = request.form.get('bart_lane1_destinations', '')
-
-    # Update SF BART Lane 2 settings (Bottom Row)
-    if 'BARTLane2' not in config:
-        config['BARTLane2'] = {}
-    config['BARTLane2']['station'] = request.form.get('bart_lane2_station', 'embr')
-    config['BARTLane2']['direction'] = request.form.get('bart_lane2_direction', '')
-    config['BARTLane2']['destinations'] = request.form.get('bart_lane2_destinations', '')
-
-    # Remove old [Subway] section if it exists
+    # Remove old sections if they exist
     if 'Subway' in config:
         config.remove_section('Subway')
+    if 'BARTLane1' in config:
+        config.remove_section('BARTLane1')
+    if 'BARTLane2' in config:
+        config.remove_section('BARTLane2')
+    if 'Transit' in config:
+        config.remove_section('Transit')
     
     # Save mode and fullscreen
     mode = request.form.get('mode', 'spotify')
