@@ -3,530 +3,623 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Matrix Display Settings</title>
+    <title>Matrix Display</title>
     <style>
-        * {
-            box-sizing: border-box;
+        :root {
+            --bg-primary: #0b0e14;
+            --bg-card: #131720;
+            --bg-input: #0d1017;
+            --bg-hover: #1a1f2e;
+            --border: rgba(255,255,255,0.06);
+            --border-focus: rgba(99,170,255,0.4);
+            --text-primary: #e6edf3;
+            --text-secondary: #7d8590;
+            --text-muted: #484f58;
+            --accent: #58a6ff;
+            --accent-glow: rgba(88,166,255,0.15);
+            --green: #3fb950;
+            --green-dim: rgba(63,185,80,0.15);
+            --red: #f85149;
+            --red-dim: rgba(248,81,73,0.15);
+            --yellow: #d29922;
+            --orange: #db6d28;
+            --radius: 12px;
+            --radius-sm: 8px;
         }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            max-width: 500px;
-            margin: 0 auto;
-            padding: 20px;
-            background: #1a1a2e;
-            color: #eee;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
             min-height: 100vh;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
         }
-        h1 {
+
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 20px 16px 40px;
+        }
+
+        /* Header */
+        .header {
             text-align: center;
-            color: #64b5f6;
-            margin-bottom: 30px;
+            padding: 24px 0 28px;
         }
-        
-        form {
-            background: #16213e;
-            padding: 25px;
-            border-radius: 10px;
+        .header h1 {
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--text-primary);
+            letter-spacing: -0.3px;
         }
-        .form-group {
-            margin-bottom: 20px;
+        .header p {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 4px;
         }
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: #90caf9;
+
+        /* Grid layout */
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
         }
-        input, select {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #333;
-            border-radius: 5px;
-            background: #0f0f23;
-            color: #fff;
-            font-size: 16px;
+
+        @media (min-width: 680px) {
+            .container { padding: 32px 24px 48px; }
+            .header { padding: 32px 0 36px; }
+            .header h1 { font-size: 24px; }
+            .grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .grid-full {
+                grid-column: 1 / -1;
+            }
         }
-        input:focus, select:focus {
-            outline: none;
-            border-color: #64b5f6;
-        }
-        .slider-container {
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            transition: border-color 0.2s;
             display: flex;
-            align-items: center;
-            gap: 15px;
+            flex-direction: column;
         }
-        input[type="range"] {
-            flex: 1;
-            padding: 0;
+        .card:hover {
+            border-color: rgba(255,255,255,0.1);
         }
-        .slider-value {
-            min-width: 40px;
-            text-align: center;
-            font-weight: bold;
-            color: #ffd54f;
-        }
-        .subway-settings {
-            border: 1px solid #333;
-            border-radius: 5px;
-            padding: 15px;
-            margin-top: 10px;
-            background: #0f0f23;
-        }
-        .subway-settings h3 {
-            margin-top: 0;
-            color: #81c784;
-            font-size: 14px;
+        .card-label {
+            font-size: 11px;
+            font-weight: 600;
             text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
         }
-        button {
-            width: 100%;
-            padding: 15px;
-            border: none;
-            border-radius: 5px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-        .btn-save {
-            background: #4caf50;
-            color: white;
-        }
-        .btn-save:hover {
-            background: #45a049;
-        }
-        .power-toggle-container {
+
+        /* Toggle rows */
+        .toggle-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            background: #16213e;
-            padding: 16px 20px;
-            border-radius: 10px;
-            margin-bottom: 25px;
+            gap: 12px;
         }
-        .power-label {
-            font-size: 16px;
+        .toggle-info { flex: 1; }
+        .toggle-label {
+            font-size: 15px;
             font-weight: 500;
-            color: #90caf9;
+            color: var(--text-primary);
         }
-        .power-status {
-            font-size: 13px;
-            color: #666;
+        .toggle-status {
+            font-size: 12px;
             margin-top: 2px;
+            font-weight: 500;
         }
-        .power-status.on { color: #4caf50; }
-        .power-status.off { color: #888; }
+        .toggle-status.on { color: var(--green); }
+        .toggle-status.off { color: var(--text-muted); }
+
+        /* Switch */
         .switch {
             position: relative;
-            width: 52px;
-            height: 28px;
-            cursor: pointer;
+            width: 44px;
+            height: 24px;
+            flex-shrink: 0;
         }
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-        .switch-slider {
+        .switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+        .switch-track {
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #333;
-            border-radius: 28px;
-            transition: all 0.3s ease;
+            inset: 0;
+            background: #30363d;
+            border-radius: 24px;
+            transition: background 0.2s;
+            cursor: pointer;
         }
-        .switch-slider:before {
+        .switch-track::after {
+            content: '';
             position: absolute;
-            content: "";
-            height: 22px;
-            width: 22px;
-            left: 3px;
-            bottom: 3px;
-            background-color: #fff;
-            border-radius: 50%;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        }
-        .switch input:checked + .switch-slider {
-            background-color: #4caf50;
-        }
-        .switch input:checked + .switch-slider:before {
-            transform: translateX(24px);
-        }
-        .switch:hover .switch-slider {
-            background-color: #444;
-        }
-        .switch:hover input:checked + .switch-slider {
-            background-color: #45a049;
-        }
-        .help-text {
-            font-size: 12px;
-            color: #888;
-            margin-top: 5px;
-        }
-        .direction-options {
-            display: flex;
-            gap: 10px;
-        }
-        .direction-options label {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px;
-            background: #0f0f23;
-            border: 1px solid #333;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-bottom: 0;
-        }
-        .direction-options input[type="radio"] {
-            width: auto;
-        }
-        .direction-options label:has(input:checked) {
-            border-color: #64b5f6;
-            background: #1a237e;
-        }
-        .checkbox-container {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 12px;
-            background: #0f0f23;
-            border: 1px solid #333;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        .checkbox-container input[type="checkbox"] {
+            top: 2px;
+            left: 2px;
             width: 20px;
             height: 20px;
+            background: #fff;
+            border-radius: 50%;
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
         }
-        .checkbox-container span {
-            color: #fff;
+        .switch input:checked + .switch-track {
+            background: var(--green);
         }
-        .spotify-settings {
-            border: 1px solid #333;
-            border-radius: 5px;
-            padding: 15px;
-            margin-top: 10px;
-            background: #0f0f23;
+        .switch input:checked + .switch-track::after {
+            transform: translateX(20px);
         }
-        .spotify-settings h3 {
-            margin-top: 0;
-            color: #1db954;
+
+        /* Form elements */
+        .field { margin-bottom: 16px; }
+        .field:last-child { margin-bottom: 0; }
+        .field label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+        .field input[type="text"],
+        .field input[type="time"],
+        .field select {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
             font-size: 14px;
-            text-transform: uppercase;
+            font-family: inherit;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            appearance: none;
+            -webkit-appearance: none;
         }
-        .schedule-settings {
-            border: 1px solid #333;
-            border-radius: 5px;
-            padding: 15px;
-            margin-top: 10px;
-            background: #0f0f23;
+        .field select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%237d8590' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 32px;
         }
-        .schedule-settings h3 {
-            margin-top: 0;
-            color: #ffab40;
-            font-size: 14px;
-            text-transform: uppercase;
+        .field input:focus, .field select:focus {
+            outline: none;
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 3px var(--accent-glow);
         }
-        .schedule-times {
+        .field .hint, .hint {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 4px;
+            line-height: 1.4;
+        }
+
+        /* Range slider */
+        .range-row {
             display: flex;
-            gap: 15px;
-            margin-top: 10px;
+            align-items: center;
+            gap: 12px;
         }
-        .schedule-times .form-group {
+        .range-row input[type="range"] {
+            flex: 1;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 4px;
+            background: #30363d;
+            border-radius: 4px;
+            outline: none;
+        }
+        .range-row input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--accent);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+        .range-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--accent);
+            min-width: 36px;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Radio pills */
+        .pill-group {
+            display: flex;
+            gap: 6px;
+        }
+        .pill-group label {
             flex: 1;
             margin-bottom: 0;
         }
-        .schedule-times input[type="time"] {
-            width: 100%;
+        .pill {
+            display: block;
+            text-align: center;
+            padding: 8px 0;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.15s;
         }
+        .pill-group input { display: none; }
+        .pill-group input:checked + .pill {
+            color: var(--accent);
+            border-color: var(--border-focus);
+            background: var(--accent-glow);
+        }
+
+        /* Checkbox */
+        .check-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+        }
+        .check-row input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--accent);
+            flex-shrink: 0;
+        }
+        .check-row span {
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+
+        /* Lane cards */
+        .lanes-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+        @media (min-width: 680px) {
+            .lanes-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        .lane {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 14px;
+        }
+        .lane-header {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* Schedule times row */
+        .time-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        /* Save button */
+        .btn-save {
+            width: 100%;
+            padding: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: inherit;
+            color: #fff;
+            background: var(--accent);
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: opacity 0.15s;
+            margin-top: auto;
+            padding-top: 12px;
+        }
+        .btn-save:hover { opacity: 0.9; }
+        .btn-save:active { opacity: 0.8; transform: scale(0.99); }
+
+        /* Collapsible sections */
+        .collapsible { overflow: hidden; }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
-    <h1>🚇 Matrix Display</h1>
-    
-    <!-- Power Toggle Switch -->
-    <div class="power-toggle-container">
-        <div>
-            <div class="power-label">Display Power</div>
-            <div class="power-status {% if settings.display_on %}on{% else %}off{% endif %}">
-                {% if settings.display_on %}Running{% else %}Stopped{% endif %}
-            </div>
+    <div class="container">
+        <div class="header">
+            <h1>Matrix Display</h1>
+            <p>LED display configuration</p>
         </div>
-        <form method="POST" action="/display/toggle" id="toggle-form">
-            <label class="switch">
-                <input type="checkbox" {% if settings.display_on %}checked{% endif %} onchange="document.getElementById('toggle-form').submit()">
-                <span class="switch-slider"></span>
-            </label>
+
+        <form method="POST" action="/save">
+            <div class="grid">
+
+                <!-- Power -->
+                <div class="card">
+                    <div class="card-label">Power</div>
+                    <div class="toggle-row" style="flex:1;">
+                        <div class="toggle-info">
+                            <div class="toggle-status {% if settings.display_on %}on{% else %}off{% endif %}" style="font-size:15px;">
+                                {% if settings.display_on %}Running{% else %}Stopped{% endif %}
+                            </div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" {% if settings.display_on %}checked{% endif %}
+                                   onchange="document.getElementById('toggle-form').submit()">
+                            <span class="switch-track"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Brightness -->
+                <div class="card">
+                    <div class="card-label">Brightness</div>
+                    <div class="range-row" style="flex:1; align-items:center;">
+                        <input type="range" name="brightness" id="brightness"
+                               min="10" max="100" value="{{ settings.brightness }}"
+                               oninput="document.getElementById('bval').textContent=this.value+'%'">
+                        <span class="range-value" id="bval">{{ settings.brightness }}%</span>
+                    </div>
+                </div>
+
+                <!-- Display Mode + Save -->
+                <div class="card">
+                    <div class="card-label">Display Mode</div>
+                    <div class="field">
+                        <select name="mode" id="mode" onchange="toggleModeSettings()">
+                            <option value="auto" {% if settings.mode == 'auto' %}selected{% endif %}>Auto (Spotify + transit fallback)</option>
+                            <option value="spotify" {% if settings.mode == 'spotify' %}selected{% endif %}>Spotify</option>
+                            <option value="subway" {% if settings.mode == 'subway' %}selected{% endif %}>Transit Only</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn-save">Save &amp; Restart</button>
+                </div>
+
+                <!-- Sleep Schedule -->
+                <div class="card">
+                    <div class="card-label">Sleep Schedule</div>
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <div class="toggle-status {% if settings.schedule.enabled %}on{% else %}off{% endif %}" id="schedule-status" style="font-size:15px;">
+                                {% if settings.schedule.enabled %}Enabled{% else %}Disabled{% endif %}
+                            </div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="schedule-toggle" name="schedule_enabled" value="on"
+                                   {% if settings.schedule.enabled %}checked{% endif %}
+                                   onchange="toggleScheduleFields()">
+                            <span class="switch-track"></span>
+                        </label>
+                    </div>
+                    <div id="schedule-fields" style="margin-top:14px;{% if not settings.schedule.enabled %} display:none;{% endif %}">
+                        <div class="time-row">
+                            <div class="field">
+                                <label for="schedule_off_time">Shut off</label>
+                                <input type="time" name="schedule_off_time" id="schedule_off_time"
+                                       value="{{ settings.schedule.off_time }}">
+                            </div>
+                            <div class="field">
+                                <label for="schedule_on_time">Wake up</label>
+                                <input type="time" name="schedule_on_time" id="schedule_on_time"
+                                       value="{{ settings.schedule.on_time }}">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- Fullscreen always on -->
+                <input type="hidden" name="fullscreen" value="on">
+
+                <!-- Transit Settings -->
+                <div id="transit-settings" class="card grid-full collapsible">
+                    <div class="card-label">Transit</div>
+                    <div class="field">
+                        <label for="transit_city">City</label>
+                        <select name="transit_city" id="transit_city" onchange="toggleCitySettings()">
+                            <option value="nyc" {% if settings.transit_city == 'nyc' %}selected{% endif %}>New York City &mdash; MTA Subway</option>
+                            <option value="sf" {% if settings.transit_city == 'sf' %}selected{% endif %}>San Francisco &mdash; BART</option>
+                        </select>
+                    </div>
+
+                    <!-- NYC MTA -->
+                    <div id="nyc-settings">
+                        <div class="lanes-grid">
+                            <div class="lane">
+                                <div class="lane-header">Lane 1 &middot; Top Row</div>
+                                <div class="field">
+                                    <label for="lane1_stop_ids">Stop IDs</label>
+                                    <input type="text" name="lane1_stop_ids" id="lane1_stop_ids"
+                                           value="{{ settings.lane1_stop_ids }}" placeholder="R20">
+                                    <p class="hint">Union Sq: 635 (4/5/6), R20 (N/Q/R/W), L03 (L)</p>
+                                </div>
+                                <div class="field">
+                                    <label>Direction</label>
+                                    <div class="pill-group">
+                                        <label>
+                                            <input type="radio" name="lane1_direction" value="N"
+                                                   {% if settings.lane1_direction == 'N' %}checked{% endif %}>
+                                            <span class="pill">Uptown (N)</span>
+                                        </label>
+                                        <label>
+                                            <input type="radio" name="lane1_direction" value="S"
+                                                   {% if settings.lane1_direction == 'S' %}checked{% endif %}>
+                                            <span class="pill">Downtown (S)</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="field">
+                                    <label for="lane1_lines">Lines</label>
+                                    <input type="text" name="lane1_lines" id="lane1_lines"
+                                           value="{{ settings.lane1_lines }}" placeholder="N,Q">
+                                    <p class="hint">e.g. 4,5,6 or A,C,E or L or N,Q,R,W</p>
+                                </div>
+                            </div>
+                            <div class="lane">
+                                <div class="lane-header">Lane 2 &middot; Bottom Row</div>
+                                <div class="field">
+                                    <label for="lane2_stop_ids">Stop IDs</label>
+                                    <input type="text" name="lane2_stop_ids" id="lane2_stop_ids"
+                                           value="{{ settings.lane2_stop_ids }}" placeholder="L03">
+                                    <p class="hint">Union Sq: 635 (4/5/6), R20 (N/Q/R/W), L03 (L)</p>
+                                </div>
+                                <div class="field">
+                                    <label>Direction</label>
+                                    <div class="pill-group">
+                                        <label>
+                                            <input type="radio" name="lane2_direction" value="N"
+                                                   {% if settings.lane2_direction == 'N' %}checked{% endif %}>
+                                            <span class="pill">Uptown (N)</span>
+                                        </label>
+                                        <label>
+                                            <input type="radio" name="lane2_direction" value="S"
+                                                   {% if settings.lane2_direction == 'S' %}checked{% endif %}>
+                                            <span class="pill">Downtown (S)</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="field">
+                                    <label for="lane2_lines">Lines</label>
+                                    <input type="text" name="lane2_lines" id="lane2_lines"
+                                           value="{{ settings.lane2_lines }}" placeholder="L">
+                                    <p class="hint">e.g. 4,5,6 or A,C,E or L or N,Q,R,W</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SF BART -->
+                    <div id="sf-settings">
+                        <div class="lanes-grid">
+                            <div class="lane">
+                                <div class="lane-header">Lane 1 &middot; Top Row</div>
+                                <div class="field">
+                                    <label for="bart_lane1_station">Station</label>
+                                    <input type="text" name="bart_lane1_station" id="bart_lane1_station"
+                                           value="{{ settings.bart_lane1_station }}" placeholder="embr">
+                                    <p class="hint">embr, mont, powl, 16th, 24th, civc</p>
+                                </div>
+                                <div class="field">
+                                    <label>Direction</label>
+                                    <div class="pill-group">
+                                        <label>
+                                            <input type="radio" name="bart_lane1_direction" value=""
+                                                   {% if settings.bart_lane1_direction == '' %}checked{% endif %}>
+                                            <span class="pill">All</span>
+                                        </label>
+                                        <label>
+                                            <input type="radio" name="bart_lane1_direction" value="n"
+                                                   {% if settings.bart_lane1_direction == 'n' %}checked{% endif %}>
+                                            <span class="pill">North</span>
+                                        </label>
+                                        <label>
+                                            <input type="radio" name="bart_lane1_direction" value="s"
+                                                   {% if settings.bart_lane1_direction == 's' %}checked{% endif %}>
+                                            <span class="pill">South</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="field">
+                                    <label for="bart_lane1_destinations">Destinations filter</label>
+                                    <input type="text" name="bart_lane1_destinations" id="bart_lane1_destinations"
+                                           value="{{ settings.bart_lane1_destinations }}" placeholder="Richmond,Antioch">
+                                    <p class="hint">Optional. Richmond, Millbrae, SFO, Antioch, Dublin, Daly City</p>
+                                </div>
+                            </div>
+                            <div class="lane">
+                                <div class="lane-header">Lane 2 &middot; Bottom Row</div>
+                                <div class="field">
+                                    <label for="bart_lane2_station">Station</label>
+                                    <input type="text" name="bart_lane2_station" id="bart_lane2_station"
+                                           value="{{ settings.bart_lane2_station }}" placeholder="embr">
+                                    <p class="hint">embr, mont, powl, 16th, 24th, civc</p>
+                                </div>
+                                <div class="field">
+                                    <label>Direction</label>
+                                    <div class="pill-group">
+                                        <label>
+                                            <input type="radio" name="bart_lane2_direction" value=""
+                                                   {% if settings.bart_lane2_direction == '' %}checked{% endif %}>
+                                            <span class="pill">All</span>
+                                        </label>
+                                        <label>
+                                            <input type="radio" name="bart_lane2_direction" value="n"
+                                                   {% if settings.bart_lane2_direction == 'n' %}checked{% endif %}>
+                                            <span class="pill">North</span>
+                                        </label>
+                                        <label>
+                                            <input type="radio" name="bart_lane2_direction" value="s"
+                                                   {% if settings.bart_lane2_direction == 's' %}checked{% endif %}>
+                                            <span class="pill">South</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="field">
+                                    <label for="bart_lane2_destinations">Destinations filter</label>
+                                    <input type="text" name="bart_lane2_destinations" id="bart_lane2_destinations"
+                                           value="{{ settings.bart_lane2_destinations }}" placeholder="Millbrae,SFO">
+                                    <p class="hint">Optional. Richmond, Millbrae, SFO, Antioch, Dublin, Daly City</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
         </form>
-    </div>
-    
-    <!-- Schedule Toggle Switch -->
-    <div class="power-toggle-container">
-        <div>
-            <div class="power-label">Sleep Schedule</div>
-            <div class="power-status {% if settings.schedule.enabled %}on{% else %}off{% endif %}">
-                {% if settings.schedule.enabled %}{{ settings.schedule.off_time }} - {{ settings.schedule.on_time }}{% else %}Disabled{% endif %}
-            </div>
-        </div>
-        <form method="POST" action="/schedule/toggle" id="schedule-toggle-form">
-            <label class="switch">
-                <input type="checkbox" {% if settings.schedule.enabled %}checked{% endif %} onchange="document.getElementById('schedule-toggle-form').submit()">
-                <span class="switch-slider"></span>
-            </label>
-        </form>
+
+        <!-- Hidden forms for toggle actions -->
+        <form method="POST" action="/display/toggle" id="toggle-form" style="display:none;"></form>
     </div>
 
-    <form method="POST" action="/save">
-        <div class="form-group">
-            <label for="mode">Display Mode</label>
-            <select name="mode" id="mode" onchange="toggleModeSettings()">
-                <option value="auto" {% if settings.mode == 'auto' %}selected{% endif %}>🔄 Auto (Spotify → Subway fallback)</option>
-                <option value="spotify" {% if settings.mode == 'spotify' %}selected{% endif %}>🎵 Spotify</option>
-                <option value="subway" {% if settings.mode == 'subway' %}selected{% endif %}>🚇 Transit</option>
-            </select>
-        </div>
-        
-        <button type="submit" class="btn-save" style="margin-bottom: 25px;">💾 Save & Restart</button>
-        
-        <div class="form-group">
-            <label for="brightness">Brightness</label>
-            <div class="slider-container">
-                <input type="range" name="brightness" id="brightness" 
-                       min="10" max="100" value="{{ settings.brightness }}"
-                       oninput="updateBrightnessValue(this.value)">
-                <span class="slider-value" id="brightness-value">{{ settings.brightness }}%</span>
-            </div>
-        </div>
-        
-        {% if settings.schedule.enabled %}
-        <div class="form-group">
-            <label>Sleep Schedule Times</label>
-            <div class="schedule-settings">
-                <input type="hidden" name="schedule_enabled" value="on">
-                <div class="schedule-times" style="display: flex;">
-                    <div class="form-group">
-                        <label for="schedule_off_time">Shut off</label>
-                        <input type="time" name="schedule_off_time" id="schedule_off_time"
-                               value="{{ settings.schedule.off_time }}">
-                    </div>
-                    <div class="form-group">
-                        <label for="schedule_on_time">Wake up</label>
-                        <input type="time" name="schedule_on_time" id="schedule_on_time"
-                               value="{{ settings.schedule.on_time }}">
-                    </div>
-                </div>
-                <p class="help-text">Display will show a blank screen between shut off and wake up times</p>
-            </div>
-        </div>
-        {% endif %}
-
-        <div class="form-group" id="spotify-settings">
-            <label>Spotify Settings</label>
-            <div class="spotify-settings">
-                <label class="checkbox-container">
-                    <input type="checkbox" name="fullscreen" id="fullscreen"
-                           {% if settings.fullscreen %}checked{% endif %}>
-                    <span>🖼️ Fullscreen Album Art (64x64)</span>
-                </label>
-                <p class="help-text">Shows album art filling the entire display</p>
-            </div>
-        </div>
-        
-        <div class="form-group" id="transit-settings">
-            <label>Transit Configuration</label>
-
-            <div class="form-group">
-                <label for="transit_city">City</label>
-                <select name="transit_city" id="transit_city" onchange="toggleCitySettings()">
-                    <option value="nyc" {% if settings.transit_city == 'nyc' %}selected{% endif %}>New York City (MTA Subway)</option>
-                    <option value="sf" {% if settings.transit_city == 'sf' %}selected{% endif %}>San Francisco (BART)</option>
-                </select>
-            </div>
-
-            <!-- NYC MTA Settings -->
-            <div id="nyc-settings">
-                <div class="subway-settings" style="margin-bottom: 15px;">
-                    <h3>Lane 1 (Top Row)</h3>
-
-                    <div class="form-group">
-                        <label for="lane1_stop_ids">Stop IDs</label>
-                        <input type="text" name="lane1_stop_ids" id="lane1_stop_ids"
-                               value="{{ settings.lane1_stop_ids }}" placeholder="e.g., R20">
-                        <p class="help-text">Union Sq: 635 (4/5/6), R20 (N/Q/R/W), L03 (L)</p>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Direction</label>
-                        <div class="direction-options">
-                            <label>
-                                <input type="radio" name="lane1_direction" value="N"
-                                       {% if settings.lane1_direction == 'N' %}checked{% endif %}>
-                                N (Uptown)
-                            </label>
-                            <label>
-                                <input type="radio" name="lane1_direction" value="S"
-                                       {% if settings.lane1_direction == 'S' %}checked{% endif %}>
-                                S (Downtown)
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label for="lane1_lines">Lines</label>
-                        <input type="text" name="lane1_lines" id="lane1_lines"
-                               value="{{ settings.lane1_lines }}" placeholder="e.g., N,Q">
-                        <p class="help-text">Examples: 4,5,6 or A,C,E or L or N,Q,R,W</p>
-                    </div>
-                </div>
-
-                <div class="subway-settings">
-                    <h3>Lane 2 (Bottom Row)</h3>
-
-                    <div class="form-group">
-                        <label for="lane2_stop_ids">Stop IDs</label>
-                        <input type="text" name="lane2_stop_ids" id="lane2_stop_ids"
-                               value="{{ settings.lane2_stop_ids }}" placeholder="e.g., L03">
-                        <p class="help-text">Union Sq: 635 (4/5/6), R20 (N/Q/R/W), L03 (L)</p>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Direction</label>
-                        <div class="direction-options">
-                            <label>
-                                <input type="radio" name="lane2_direction" value="N"
-                                       {% if settings.lane2_direction == 'N' %}checked{% endif %}>
-                                N (Uptown)
-                            </label>
-                            <label>
-                                <input type="radio" name="lane2_direction" value="S"
-                                       {% if settings.lane2_direction == 'S' %}checked{% endif %}>
-                                S (Downtown)
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label for="lane2_lines">Lines</label>
-                        <input type="text" name="lane2_lines" id="lane2_lines"
-                               value="{{ settings.lane2_lines }}" placeholder="e.g., L">
-                        <p class="help-text">Examples: 4,5,6 or A,C,E or L or N,Q,R,W</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- SF BART Settings -->
-            <div id="sf-settings">
-                <div class="subway-settings" style="margin-bottom: 15px;">
-                    <h3>Lane 1 (Top Row)</h3>
-
-                    <div class="form-group">
-                        <label for="bart_lane1_station">Station</label>
-                        <input type="text" name="bart_lane1_station" id="bart_lane1_station"
-                               value="{{ settings.bart_lane1_station }}" placeholder="e.g., embr">
-                        <p class="help-text">embr (Embarcadero), mont (Montgomery), powl (Powell), 16th, 24th, civc</p>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Direction</label>
-                        <div class="direction-options">
-                            <label>
-                                <input type="radio" name="bart_lane1_direction" value=""
-                                       {% if settings.bart_lane1_direction == '' %}checked{% endif %}>
-                                All
-                            </label>
-                            <label>
-                                <input type="radio" name="bart_lane1_direction" value="n"
-                                       {% if settings.bart_lane1_direction == 'n' %}checked{% endif %}>
-                                North
-                            </label>
-                            <label>
-                                <input type="radio" name="bart_lane1_direction" value="s"
-                                       {% if settings.bart_lane1_direction == 's' %}checked{% endif %}>
-                                South
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label for="bart_lane1_destinations">Destinations (optional filter)</label>
-                        <input type="text" name="bart_lane1_destinations" id="bart_lane1_destinations"
-                               value="{{ settings.bart_lane1_destinations }}" placeholder="e.g., Richmond,Antioch">
-                        <p class="help-text">Leave empty for soonest train, or filter: Richmond, Millbrae, SFO, Antioch, Dublin, Daly City</p>
-                    </div>
-                </div>
-
-                <div class="subway-settings">
-                    <h3>Lane 2 (Bottom Row)</h3>
-
-                    <div class="form-group">
-                        <label for="bart_lane2_station">Station</label>
-                        <input type="text" name="bart_lane2_station" id="bart_lane2_station"
-                               value="{{ settings.bart_lane2_station }}" placeholder="e.g., embr">
-                        <p class="help-text">embr (Embarcadero), mont (Montgomery), powl (Powell), 16th, 24th, civc</p>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Direction</label>
-                        <div class="direction-options">
-                            <label>
-                                <input type="radio" name="bart_lane2_direction" value=""
-                                       {% if settings.bart_lane2_direction == '' %}checked{% endif %}>
-                                All
-                            </label>
-                            <label>
-                                <input type="radio" name="bart_lane2_direction" value="n"
-                                       {% if settings.bart_lane2_direction == 'n' %}checked{% endif %}>
-                                North
-                            </label>
-                            <label>
-                                <input type="radio" name="bart_lane2_direction" value="s"
-                                       {% if settings.bart_lane2_direction == 's' %}checked{% endif %}>
-                                South
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label for="bart_lane2_destinations">Destinations (optional filter)</label>
-                        <input type="text" name="bart_lane2_destinations" id="bart_lane2_destinations"
-                               value="{{ settings.bart_lane2_destinations }}" placeholder="e.g., Millbrae,SFO">
-                        <p class="help-text">Leave empty for soonest train, or filter: Richmond, Millbrae, SFO, Antioch, Dublin, Daly City</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </form>
-    
-    
     <script>
-        function updateBrightnessValue(val) {
-            document.getElementById('brightness-value').textContent = val + '%';
-        }
-        
         function toggleModeSettings() {
-            const mode = document.getElementById('mode').value;
-            const spotifySettings = document.getElementById('spotify-settings');
-            const transitSettings = document.getElementById('transit-settings');
+            var mode = document.getElementById('mode').value;
+            var transit = document.getElementById('transit-settings');
 
-            spotifySettings.style.display = (mode === 'spotify' || mode === 'auto') ? 'block' : 'none';
-            transitSettings.style.display = (mode === 'subway' || mode === 'auto') ? 'block' : 'none';
+            transit.classList.toggle('hidden', mode === 'spotify');
             toggleCitySettings();
         }
 
         function toggleCitySettings() {
-            const city = document.getElementById('transit_city').value;
-            document.getElementById('nyc-settings').style.display = (city === 'nyc') ? 'block' : 'none';
-            document.getElementById('sf-settings').style.display = (city === 'sf') ? 'block' : 'none';
+            var city = document.getElementById('transit_city').value;
+            var nyc = document.getElementById('nyc-settings');
+            var sf = document.getElementById('sf-settings');
+
+            nyc.classList.toggle('hidden', city !== 'nyc');
+            sf.classList.toggle('hidden', city !== 'sf');
         }
 
-        // Initial toggle
+        function toggleScheduleFields() {
+            var cb = document.getElementById('schedule-toggle');
+            var fields = document.getElementById('schedule-fields');
+            var status = document.getElementById('schedule-status');
+            fields.style.display = cb.checked ? '' : 'none';
+            status.textContent = cb.checked ? 'Enabled' : 'Disabled';
+            status.className = 'toggle-status ' + (cb.checked ? 'on' : 'off');
+        }
+
         toggleModeSettings();
     </script>
 </body>
 </html>
-
