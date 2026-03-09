@@ -88,7 +88,9 @@ class MuniModule:
         self.last_fetch_time = 0
         self.fetch_interval = 120  # 511 API limit: 60 req/hour; 2 lanes × 30/hour = 60/hour
         self.cached_arrivals = {'lane1': None, 'lane2': None}
-        self.last_fetch_times = {'lane1': 0, 'lane2': 60}  # stagger lanes by 60s
+        # Stagger lane fetches 60s apart so they never both hit the API at once
+        _now = time.time()
+        self.last_fetch_times = {'lane1': 0, 'lane2': _now - self.fetch_interval + 60}
         self.lanes = {}
 
         if config is None:
@@ -167,6 +169,8 @@ class MuniModule:
                 if lane_config['direction'] in ('IB', 'OB') and direction_ref != lane_config['direction']:
                     continue
 
+                monitored_call = journey.get('MonitoredCall', {})
+
                 # Filter by destination if configured (case-insensitive substring match)
                 dest_filter = lane_config.get('destination', '').lower()
                 if dest_filter:
@@ -174,8 +178,6 @@ class MuniModule:
                     dest_name = journey.get('DestinationName', '').lower()
                     if dest_filter not in dest_display and dest_filter not in dest_name:
                         continue
-
-                monitored_call = journey.get('MonitoredCall', {})
                 expected_arrival = (
                     monitored_call.get('ExpectedArrivalTime') or
                     monitored_call.get('AimedArrivalTime')
