@@ -31,12 +31,59 @@ LINE_COLORS = {
     'S': (128, 129, 131),  # Shuttle Gray
 }
 
-# Lines that need black text (light backgrounds)
-BLACK_TEXT_LINES = {'N', 'Q', 'R', 'W', 'G'}
+# SF Muni line colors
+MUNI_LINE_COLORS = {
+    # Metro lines
+    'J':  (244, 164, 24),
+    'K':  (0, 135, 82),
+    'KT': (0, 135, 82),
+    'L':  (204, 160, 0),
+    'M':  (238, 50, 36),
+    'N':  (0, 45, 130),
+    'T':  (0, 135, 82),
+    'S':  (100, 100, 100),
+    # Bus lines (SF Muni brand red for numbered routes)
+    '1':  (180, 0, 0),
+    '2':  (180, 0, 0),
+    '5':  (180, 0, 0),
+    '6':  (180, 0, 0),
+    '7':  (180, 0, 0),
+    '8':  (180, 0, 0),
+    '9':  (180, 0, 0),
+    '10': (180, 0, 0),
+    '12': (180, 0, 0),
+    '14': (180, 0, 0),
+    '19': (180, 0, 0),
+    '21': (180, 0, 0),
+    '22': (180, 0, 0),
+    '24': (180, 0, 0),
+    '27': (180, 0, 0),
+    '28': (180, 0, 0),
+    '29': (180, 0, 0),
+    '30': (180, 0, 0),
+    '31': (180, 0, 0),
+    '33': (180, 0, 0),
+    '36': (180, 0, 0),
+    '37': (180, 0, 0),
+    '38': (180, 0, 0),
+    '43': (180, 0, 0),
+    '44': (180, 0, 0),
+    '45': (180, 0, 0),
+    '48': (180, 0, 0),
+    '49': (180, 0, 0),
+    '54': (180, 0, 0),
+    '55': (180, 0, 0),
+    '67': (180, 0, 0),
+}
 
-def create_circle_sprite(line, size=19):
-    """Create a circle sprite with centered text for a subway line."""
-    color = LINE_COLORS.get(line, (255, 255, 255))
+# Lines that need black text (light backgrounds)
+BLACK_TEXT_LINES = {'N', 'Q', 'R', 'W', 'G', 'L'}
+
+def create_circle_sprite(line, size=19, color_map=None):
+    """Create a circle sprite with centered text for a subway or Muni line."""
+    if color_map is None:
+        color_map = LINE_COLORS
+    color = color_map.get(line, (180, 0, 0))
     text_color = (0, 0, 0) if line in BLACK_TEXT_LINES else (255, 255, 255)
     
     # Create image with transparency
@@ -84,18 +131,25 @@ def create_circle_sprite(line, size=19):
     return img
 
 def main():
-    # Create sprites directory
     sprites_dir = "sprites"
     os.makedirs(sprites_dir, exist_ok=True)
-    
-    # Generate sprite for each line
+
+    # NYC subway sprites
     for line in LINE_COLORS.keys():
-        sprite = create_circle_sprite(line, size=19)
+        sprite = create_circle_sprite(line, size=19, color_map=LINE_COLORS)
         filepath = os.path.join(sprites_dir, f"circle_{line}.png")
         sprite.save(filepath)
         print(f"Created {filepath}")
-    
-    print(f"\nGenerated {len(LINE_COLORS)} circle sprites in {sprites_dir}/")
+
+    # SF Muni sprites
+    for line in MUNI_LINE_COLORS.keys():
+        sprite = create_circle_sprite(line, size=19, color_map=MUNI_LINE_COLORS)
+        filepath = os.path.join(sprites_dir, f"circle_muni_{line}.png")
+        sprite.save(filepath)
+        print(f"Created {filepath}")
+
+    total = len(LINE_COLORS) + len(MUNI_LINE_COLORS)
+    print(f"\nGenerated {total} circle sprites in {sprites_dir}/")
 
 if __name__ == "__main__":
     main()

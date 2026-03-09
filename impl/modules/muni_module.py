@@ -20,23 +20,35 @@ DEFAULT_MUNI_COLOR = (204, 0, 0)
 
 # Shorten common SF Muni destination names for the small display
 DESTINATION_SIMPLIFICATIONS = {
-    'EMBARCADERO STATION':     'Embarc',
-    'CASTRO STATION':          'Castro',
-    'DALY CITY BART STATION':  'Daly Cy',
-    'BALBOA PARK STATION':     'Balboa',
-    'CALTRAIN':                'Caltrn',
-    'OCEAN BEACH':             'Ocean',
-    'JUDAH & 9TH AVE':         'Judah',
-    'WEST PORTAL STATION':     'W Portal',
-    'SF STATE':                'SF St',
-    'SUNNYDALE':               'Snnydale',
-    'VISITACION VALLEY':       'Vis Vly',
-    'MISSION & GENEVA':        'Mission',
-    'BAYSHORE':                'Bayshr',
-    'FISHERMANS WHARF':        "Fish Wrf",
+    # Marina / Cow Hollow terminals
+    'LYON + GREENWICH':        'Marina',
+    'LYON + GREEN':            'Marina',
+    'LYON ST':                 'Marina',
+    # Fisherman's Wharf / North Beach
+    'FISHERMANS WHARF':        'Fish Wrf',
     "FISHERMAN'S WHARF":       'Fish Wrf',
-    'TRANSBAY TERMINAL':       'Transbay',
-    'SALESFORCE TRANSIT CTR':  'SFTransit',
+    'GHIRARDELLI':             'Ghirardl',
+    'NORTH POINT':             'N Point',
+    # Caltrain / SoMa
+    'CALTRAIN':                'Caltrn',
+    'TOWNSEND':                'Caltrn',
+    'LUSK':                    'Caltrn',
+    # Downtown / Civic
+    'EMBARCADERO':             'Embarc',
+    'TRANSBAY':                'Transbay',
+    'SALESFORCE':              'Transbay',
+    # Outer neighborhoods
+    'OCEAN BEACH':             'Ocean Bch',
+    'WEST PORTAL':             'W Portal',
+    'BALBOA PARK':             'Balboa Pk',
+    'DALY CITY':               'Daly City',
+    'BAYSHORE':                'Bayshore',
+    'SUNNYDALE':               'Sunnydale',
+    'VISITACION VALLEY':       'Vis Vly',
+    # Other common
+    'CASTRO':                  'Castro',
+    'SF STATE':                'SF State',
+    'JUDAH':                   'Judah',
 }
 
 
@@ -47,8 +59,25 @@ def _simplify_destination(name):
     for key, short in DESTINATION_SIMPLIFICATIONS.items():
         if key in upper:
             return short
-    # Truncate to 9 chars so it fits on the display
-    return name.strip()[:9]
+    return name.strip()[:10]
+
+
+import re as _re
+
+def _format_stop_name(name):
+    """Format a stop cross-street name for display, e.g. 'Columbus Ave & Mason St' -> 'Columbus & Mason'"""
+    if not name:
+        return name
+    # Remove common street suffixes
+    cleaned = _re.sub(
+        r'\b(Street|St|Avenue|Ave|Boulevard|Blvd|Drive|Dr|Road|Rd|Lane|Ln|Court|Ct|Place|Pl|Way)\b\.?',
+        '', name, flags=_re.IGNORECASE
+    )
+    # Collapse multiple spaces
+    cleaned = _re.sub(r'\s{2,}', ' ', cleaned).strip()
+    # Clean up spaces around &
+    cleaned = _re.sub(r'\s*&\s*', ' & ', cleaned).strip()
+    return cleaned
 
 
 class MuniModule:
@@ -57,8 +86,9 @@ class MuniModule:
         self.queue = LifoQueue()
         self.config = config
         self.last_fetch_time = 0
-        self.fetch_interval = 30
+        self.fetch_interval = 120  # 511 API limit: 60 req/hour; 2 lanes × 30/hour = 60/hour
         self.cached_arrivals = {'lane1': None, 'lane2': None}
+        self.last_fetch_times = {'lane1': 0, 'lane2': 60}  # stagger lanes by 60s
         self.lanes = {}
 
         if config is None:
@@ -88,7 +118,8 @@ class MuniModule:
         direction = config.get(section, 'direction', fallback='IB').strip().upper()
         lines_str = config.get(section, 'lines', fallback='')
         lines = [l.strip().upper() for l in lines_str.split(',') if l.strip()]
-        return {'stop_ids': stop_ids, 'direction': direction, 'lines': lines}
+        destination = config.get(section, 'destination', fallback='').strip()
+        return {'stop_ids': stop_ids, 'direction': direction, 'lines': lines, 'destination': destination}
 
     def get_line_color(self, line):
         return MUNI_LINE_COLORS.get(line.upper(), DEFAULT_MUNI_COLOR)
@@ -136,6 +167,14 @@ class MuniModule:
                 if lane_config['direction'] in ('IB', 'OB') and direction_ref != lane_config['direction']:
                     continue
 
+                # Filter by destination if configured (case-insensitive substring match)
+                dest_filter = lane_config.get('destination', '').lower()
+                if dest_filter:
+                    dest_display = monitored_call.get('DestinationDisplay', '').lower()
+                    dest_name = journey.get('DestinationName', '').lower()
+                    if dest_filter not in dest_display and dest_filter not in dest_name:
+                        continue
+
                 monitored_call = journey.get('MonitoredCall', {})
                 expected_arrival = (
                     monitored_call.get('ExpectedArrivalTime') or
@@ -151,17 +190,18 @@ class MuniModule:
                 except Exception:
                     continue
 
-                raw_dest = (
+                # Use the stop's cross-street name as the direction label
+                stop_name = monitored_call.get('StopPointName', '')
+                label = _format_stop_name(stop_name) if stop_name else _simplify_destination(
                     monitored_call.get('DestinationDisplay') or
                     journey.get('DestinationName') or
                     direction_ref
                 )
-                destination = _simplify_destination(raw_dest)
 
                 if line_ref not in line_arrivals:
                     line_arrivals[line_ref] = {
                         'line': line_ref,
-                        'direction': destination,
+                        'direction': label,
                         'times': [],
                         'color': self.get_line_color(line_ref),
                     }
@@ -169,7 +209,7 @@ class MuniModule:
                 line_arrivals[line_ref]['times'].append({
                     'minutes': minutes_away,
                     'arrival_timestamp': arrival_ts,
-                    'terminal': destination,
+                    'terminal': label,
                 })
 
         # Sort each line's times, keep top 3
@@ -190,27 +230,22 @@ class MuniModule:
             return []
 
         current_time = time.time()
+        fetched_any = False
 
-        if current_time - self.last_fetch_time < self.fetch_interval:
-            cached = self._get_cached_with_updated_times()
-            if cached:
-                return cached
+        for lane_key in ['lane1', 'lane2']:
+            if current_time - self.last_fetch_times[lane_key] >= self.fetch_interval:
+                try:
+                    arrival = self._fetch_lane_arrivals(self.lanes[lane_key])
+                    self.cached_arrivals[lane_key] = arrival
+                    self.last_fetch_times[lane_key] = current_time
+                    fetched_any = True
+                except Exception as e:
+                    print(f"[Muni Module] Error fetching {lane_key}: {e}")
 
-        try:
-            lane1_arrival = self._fetch_lane_arrivals(self.lanes['lane1'])
-            lane2_arrival = self._fetch_lane_arrivals(self.lanes['lane2'])
-
-            self.cached_arrivals = {'lane1': lane1_arrival, 'lane2': lane2_arrival}
-            self.last_fetch_time = current_time
-
-            result = [a for a in [lane1_arrival, lane2_arrival] if a is not None]
-            if result:
-                self.queue.put(result)
-            return result
-
-        except Exception as e:
-            print(f"[Muni Module] Unexpected error: {e}")
-            return self._get_cached_with_updated_times() or []
+        result = self._get_cached_with_updated_times() or []
+        if fetched_any and result:
+            self.queue.put(result)
+        return result
 
     def _get_cached_with_updated_times(self):
         if not self.cached_arrivals['lane1'] and not self.cached_arrivals['lane2']:

@@ -117,10 +117,12 @@ def index():
         'muni_lane1_stop_ids': config.get('MuniLane1', 'stop_ids', fallback=''),
         'muni_lane1_direction': config.get('MuniLane1', 'direction', fallback='IB'),
         'muni_lane1_lines': config.get('MuniLane1', 'lines', fallback=''),
+        'muni_lane1_destination': config.get('MuniLane1', 'destination', fallback=''),
         # SF Muni Lane 2 (Bottom Row)
         'muni_lane2_stop_ids': config.get('MuniLane2', 'stop_ids', fallback=''),
         'muni_lane2_direction': config.get('MuniLane2', 'direction', fallback='OB'),
         'muni_lane2_lines': config.get('MuniLane2', 'lines', fallback=''),
+        'muni_lane2_destination': config.get('MuniLane2', 'destination', fallback=''),
         'display_on': get_display_status(),
         'schedule': get_schedule(),
     }
@@ -163,6 +165,7 @@ def save():
     config['MuniLane1']['stop_ids'] = request.form.get('muni_lane1_stop_ids', '')
     config['MuniLane1']['direction'] = request.form.get('muni_lane1_direction', 'IB')
     config['MuniLane1']['lines'] = request.form.get('muni_lane1_lines', '')
+    config['MuniLane1']['destination'] = request.form.get('muni_lane1_destination', '')
 
     # Update SF Muni Lane 2 settings (Bottom Row)
     if 'MuniLane2' not in config:
@@ -170,6 +173,7 @@ def save():
     config['MuniLane2']['stop_ids'] = request.form.get('muni_lane2_stop_ids', '')
     config['MuniLane2']['direction'] = request.form.get('muni_lane2_direction', 'OB')
     config['MuniLane2']['lines'] = request.form.get('muni_lane2_lines', '')
+    config['MuniLane2']['destination'] = request.form.get('muni_lane2_destination', '')
 
     # Remove legacy sections
     if 'Subway' in config:

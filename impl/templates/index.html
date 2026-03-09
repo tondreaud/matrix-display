@@ -569,6 +569,12 @@
                                        value="{{ settings.muni_lane1_lines }}" placeholder="14,49">
                                 <p class="hint">Route numbers/letters, e.g. 14,49 or N or 38,38R. Leave blank for all lines at stop.</p>
                             </div>
+                            <div class="field">
+                                <label for="muni_lane1_destination">End Stop filter</label>
+                                <input type="text" name="muni_lane1_destination" id="muni_lane1_destination"
+                                       value="{{ settings.muni_lane1_destination }}" placeholder="e.g. Presidio">
+                                <p class="hint">Only show buses going to this destination. Leave blank for all. e.g. <em>Presidio</em> filters out short-turn trips.</p>
+                            </div>
                         </div>
                         <div class="lane">
                             <div class="lane-header">Lane 2 &middot; Bottom Row</div>
@@ -598,6 +604,12 @@
                                 <input type="text" name="muni_lane2_lines" id="muni_lane2_lines"
                                        value="{{ settings.muni_lane2_lines }}" placeholder="N">
                                 <p class="hint">Route numbers/letters. Leave blank for all lines at stop.</p>
+                            </div>
+                            <div class="field">
+                                <label for="muni_lane2_destination">End Stop filter</label>
+                                <input type="text" name="muni_lane2_destination" id="muni_lane2_destination"
+                                       value="{{ settings.muni_lane2_destination }}" placeholder="e.g. Presidio">
+                                <p class="hint">Only show buses going to this destination. Leave blank for all.</p>
                             </div>
                         </div>
                     </div>

@@ -45,23 +45,29 @@ class SubwayScreen:
         self.thread.start()
     
     def _load_sprites(self):
-        """Load pre-rendered circle sprites for each subway line"""
+        """Load pre-rendered circle sprites for NYC subway and SF Muni lines."""
         sprites_dir = "sprites"
-        lines = ['1', '2', '3', '4', '5', '6', '7', 
-                 'A', 'B', 'C', 'D', 'E', 'F', 'G', 
-                 'J', 'L', 'M', 'N', 'Q', 'R', 'S', 'W', 'Z']
-        
-        for line in lines:
-            sprite_path = os.path.join(sprites_dir, f"circle_{line}.png")
-            if os.path.exists(sprite_path):
-                # Load and convert to RGB (remove alpha by compositing on black)
-                sprite = Image.open(sprite_path).convert('RGBA')
-                # Create black background and composite
+
+        def _load(path, key):
+            if os.path.exists(path):
+                sprite = Image.open(path).convert('RGBA')
                 bg = Image.new('RGB', sprite.size, (0, 0, 0))
-                bg.paste(sprite, mask=sprite.split()[3])  # Use alpha as mask
-                self.circle_sprites[line] = bg
-                print(f"[Subway Display] Loaded sprite for line {line}")
-        
+                bg.paste(sprite, mask=sprite.split()[3])
+                self.circle_sprites[key] = bg
+
+        # NYC subway sprites (circle_X.png → keyed as line letter/number)
+        nyc_lines = ['1','2','3','4','5','6','7',
+                     'A','B','C','D','E','F','G',
+                     'J','L','M','N','Q','R','S','W','Z']
+        for line in nyc_lines:
+            _load(os.path.join(sprites_dir, f"circle_{line}.png"), line)
+
+        # SF Muni sprites (circle_muni_X.png → keyed as "muni_X")
+        for fname in os.listdir(sprites_dir):
+            if fname.startswith("circle_muni_") and fname.endswith(".png"):
+                line_id = fname[len("circle_muni_"):-len(".png")]
+                _load(os.path.join(sprites_dir, fname), f"muni_{line_id}")
+
         print(f"[Subway Display] Loaded {len(self.circle_sprites)} circle sprites")
     
     def _fetch_arrivals_async(self):
@@ -167,15 +173,15 @@ class SubwayScreen:
         direction = line_data['direction']
         times = line_data['times']
         
-        # Paste pre-rendered circle sprite, or draw a colored circle for BART lines
-        if line in self.circle_sprites:
-            sprite = self.circle_sprites[line]
-            sprite_y = y_pos + 6
-            frame.paste(sprite, (self.circle_x, sprite_y))
+        # Resolve sprite: try Muni-prefixed key first, then plain key
+        sprite_key = f"muni_{line}" if f"muni_{line}" in self.circle_sprites else line
+        sprite_y = y_pos + 6
+
+        if sprite_key in self.circle_sprites:
+            frame.paste(self.circle_sprites[sprite_key], (self.circle_x, sprite_y))
         else:
-            # Draw a solid colored circle for lines without sprites (e.g. BART)
+            # Fallback: draw circle + pixel-perfect centered text (same method as generate_sprites.py)
             circle_size = 19
-            sprite_y = y_pos + 6
             cx = self.circle_x + circle_size // 2
             cy = sprite_y + circle_size // 2
             r = circle_size // 2
@@ -183,6 +189,26 @@ class SubwayScreen:
                 [cx - r, cy - r, cx + r, cy + r],
                 fill=line_data.get('color', (255, 255, 255))
             )
+            line_text = line[:2]
+            glyph = self.font.draw(line_text, missing="?")
+            bitmap = glyph.todata(2)
+            min_r, max_r, min_c, max_c = len(bitmap), 0, len(bitmap[0]) if bitmap else 0, 0
+            for ri, row in enumerate(bitmap):
+                for ci, px in enumerate(row):
+                    if px == 1:
+                        min_r = min(min_r, ri); max_r = max(max_r, ri)
+                        min_c = min(min_c, ci); max_c = max(max_c, ci)
+            cw = max_c - min_c + 1
+            ch = max_r - min_r + 1
+            sx = self.circle_x + (circle_size - cw) // 2
+            sy = sprite_y + (circle_size - ch) // 2
+            for ri, row in enumerate(bitmap):
+                for ci, px in enumerate(row):
+                    if px == 1:
+                        px_x = sx + (ci - min_c)
+                        px_y = sy + (ri - min_r)
+                        if 0 <= px_x < self.canvas_width and 0 <= px_y < self.canvas_height:
+                            frame.putpixel((px_x, px_y), (255, 255, 255))
         
         # Draw direction text in cyan/blue (first line of text) - with scrolling if needed
         dest_y = y_pos + 4
