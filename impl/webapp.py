@@ -103,14 +103,26 @@ def index():
         'mode': get_current_mode(),
         'fullscreen': get_fullscreen(),
         'brightness': config.getint('Matrix', 'brightness', fallback=50),
-        # NYC Lane 1 (Top Row)
+        'transit_provider': config.get('Matrix', 'transit_provider', fallback='subway'),
+        # NYC Subway Lane 1 (Top Row)
         'lane1_stop_ids': config.get('SubwayLane1', 'stop_ids', fallback='R20'),
         'lane1_direction': config.get('SubwayLane1', 'direction', fallback='N'),
         'lane1_lines': config.get('SubwayLane1', 'lines', fallback='N,Q'),
-        # NYC Lane 2 (Bottom Row)
+        # NYC Subway Lane 2 (Bottom Row)
         'lane2_stop_ids': config.get('SubwayLane2', 'stop_ids', fallback='L03'),
         'lane2_direction': config.get('SubwayLane2', 'direction', fallback='S'),
         'lane2_lines': config.get('SubwayLane2', 'lines', fallback='L'),
+        # SF Muni Lane 1 (Top Row)
+        'muni_api_key': config.get('511', 'api_key', fallback=''),
+        'muni_lane1_stop_ids': config.get('MuniLane1', 'stop_ids', fallback=''),
+        'muni_lane1_direction': config.get('MuniLane1', 'direction', fallback='IB'),
+        'muni_lane1_lines': config.get('MuniLane1', 'lines', fallback=''),
+        'muni_lane1_destination': config.get('MuniLane1', 'destination', fallback=''),
+        # SF Muni Lane 2 (Bottom Row)
+        'muni_lane2_stop_ids': config.get('MuniLane2', 'stop_ids', fallback=''),
+        'muni_lane2_direction': config.get('MuniLane2', 'direction', fallback='OB'),
+        'muni_lane2_lines': config.get('MuniLane2', 'lines', fallback=''),
+        'muni_lane2_destination': config.get('MuniLane2', 'destination', fallback=''),
         'display_on': get_display_status(),
         'schedule': get_schedule(),
     }
@@ -126,7 +138,8 @@ def save():
     if 'Matrix' not in config:
         config['Matrix'] = {}
     config['Matrix']['brightness'] = request.form.get('brightness', '50')
-    
+    config['Matrix']['transit_provider'] = request.form.get('transit_provider', 'subway')
+
     # Update NYC Subway Lane 1 settings (Top Row)
     if 'SubwayLane1' not in config:
         config['SubwayLane1'] = {}
@@ -141,7 +154,28 @@ def save():
     config['SubwayLane2']['direction'] = request.form.get('lane2_direction', 'S')
     config['SubwayLane2']['lines'] = request.form.get('lane2_lines', 'L')
 
-    # Remove old sections if they exist
+    # Update SF Muni 511 API key
+    if '511' not in config:
+        config['511'] = {}
+    config['511']['api_key'] = request.form.get('muni_api_key', '')
+
+    # Update SF Muni Lane 1 settings (Top Row)
+    if 'MuniLane1' not in config:
+        config['MuniLane1'] = {}
+    config['MuniLane1']['stop_ids'] = request.form.get('muni_lane1_stop_ids', '')
+    config['MuniLane1']['direction'] = request.form.get('muni_lane1_direction', 'IB')
+    config['MuniLane1']['lines'] = request.form.get('muni_lane1_lines', '')
+    config['MuniLane1']['destination'] = request.form.get('muni_lane1_destination', '')
+
+    # Update SF Muni Lane 2 settings (Bottom Row)
+    if 'MuniLane2' not in config:
+        config['MuniLane2'] = {}
+    config['MuniLane2']['stop_ids'] = request.form.get('muni_lane2_stop_ids', '')
+    config['MuniLane2']['direction'] = request.form.get('muni_lane2_direction', 'OB')
+    config['MuniLane2']['lines'] = request.form.get('muni_lane2_lines', '')
+    config['MuniLane2']['destination'] = request.form.get('muni_lane2_destination', '')
+
+    # Remove legacy sections
     if 'Subway' in config:
         config.remove_section('Subway')
     if 'BARTLane1' in config:
