@@ -6,6 +6,7 @@ from apps_v2 import spotify_player
 from apps_v2 import subway_display
 from modules import spotify_module
 from modules import mta_module
+from modules import muni_module
 
 
 SCHEDULE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.schedule')
@@ -91,7 +92,7 @@ def main():
 
     parser.add_argument('-f', '--fullscreen', action='store_true', help='Always display album art in fullscreen (Spotify mode)')
     parser.add_argument('-e', '--emulated', action='store_true', help='Run in a matrix emulator')
-    parser.add_argument('-m', '--mode', choices=['spotify', 'subway', 'auto'], default='auto', help='Display mode: spotify, subway, or auto (spotify with subway fallback)')
+    parser.add_argument('-m', '--mode', choices=['spotify', 'subway', 'muni', 'auto'], default='auto', help='Display mode: spotify, subway, muni, or auto (spotify with transit fallback)')
     args = parser.parse_args()
 
     is_emulated = args.emulated
@@ -115,16 +116,30 @@ def main():
         print("no config file found")
         sys.exit()
 
+    # Determine which transit provider to use (subway = NYC MTA, muni = SF Muni)
+    transit_provider = config.get('Matrix', 'transit_provider', fallback='subway').strip().lower()
+
+    def _make_transit_module():
+        if transit_provider == 'muni':
+            return muni_module.MuniModule(config)
+        return mta_module.MTAModule(config)
+
     # Initialize modules and app based on mode
     if mode == 'subway':
-        print("Starting in TRANSIT mode...")
+        print("Starting in NYC SUBWAY mode...")
         transit_mod = mta_module.MTAModule(config)
         modules = { 'mta': transit_mod }
         app = subway_display.SubwayScreen(config, modules)
+    elif mode == 'muni':
+        print("Starting in SF MUNI mode...")
+        transit_mod = muni_module.MuniModule(config)
+        modules = { 'mta': transit_mod }
+        app = subway_display.SubwayScreen(config, modules)
     elif mode == 'auto':
-        print("Starting in AUTO mode (spotify with transit fallback)...")
+        provider_label = 'SF Muni' if transit_provider == 'muni' else 'NYC Subway'
+        print(f"Starting in AUTO mode (spotify with {provider_label} fallback)...")
         spotify_mod = spotify_module.SpotifyModule(config)
-        transit_mod = mta_module.MTAModule(config)
+        transit_mod = _make_transit_module()
         spotify_app = spotify_player.SpotifyScreen(config, { 'spotify': spotify_mod }, is_full_screen_always)
         subway_app = subway_display.SubwayScreen(config, { 'mta': transit_mod })
     else:

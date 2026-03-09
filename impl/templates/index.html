@@ -388,9 +388,27 @@
                     <div class="field">
                         <select name="mode" id="mode" onchange="toggleModeSettings()">
                             <option value="auto" {% if settings.mode == 'auto' %}selected{% endif %}>Auto (Spotify + transit fallback)</option>
-                            <option value="spotify" {% if settings.mode == 'spotify' %}selected{% endif %}>Spotify</option>
-                            <option value="subway" {% if settings.mode == 'subway' %}selected{% endif %}>Transit Only</option>
+                            <option value="spotify" {% if settings.mode == 'spotify' %}selected{% endif %}>Spotify only</option>
+                            <option value="subway" {% if settings.mode == 'subway' %}selected{% endif %}>NYC Subway only</option>
+                            <option value="muni" {% if settings.mode == 'muni' %}selected{% endif %}>SF Muni only</option>
                         </select>
+                    </div>
+                    <div id="transit-provider-row" class="field" style="display:none;">
+                        <label>Transit fallback provider</label>
+                        <div class="pill-group">
+                            <label>
+                                <input type="radio" name="transit_provider" value="subway"
+                                       {% if settings.transit_provider != 'muni' %}checked{% endif %}
+                                       onchange="toggleModeSettings()">
+                                <span class="pill">NYC Subway</span>
+                            </label>
+                            <label>
+                                <input type="radio" name="transit_provider" value="muni"
+                                       {% if settings.transit_provider == 'muni' %}checked{% endif %}
+                                       onchange="toggleModeSettings()">
+                                <span class="pill">SF Muni</span>
+                            </label>
+                        </div>
                     </div>
                     <button type="submit" class="btn-save">Save &amp; Restart</button>
                 </div>
@@ -445,8 +463,8 @@
                 <!-- Fullscreen always on -->
                 <input type="hidden" name="fullscreen" value="on">
 
-                <!-- Transit Settings (NYC MTA) -->
-                <div id="transit-settings" class="card grid-full collapsible">
+                <!-- Transit Settings (NYC Subway) -->
+                <div id="transit-settings-subway" class="card grid-full collapsible">
                     <div class="card-label">Transit &middot; NYC Subway</div>
                     <div class="lanes-grid">
                         <div class="lane">
@@ -512,6 +530,79 @@
                     </div>
                 </div>
 
+                <!-- Transit Settings (SF Muni) -->
+                <div id="transit-settings-muni" class="card grid-full collapsible">
+                    <div class="card-label">Transit &middot; SF Muni Bus</div>
+                    <div class="field" style="margin-bottom:16px;">
+                        <label for="muni_api_key">511 SF Bay API Key</label>
+                        <input type="text" name="muni_api_key" id="muni_api_key"
+                               value="{{ settings.muni_api_key }}" placeholder="Get a free key at 511.org/open-data/token">
+                        <p class="hint">Free key from <a href="https://511.org/open-data/token" target="_blank" style="color:var(--accent);">511.org/open-data/token</a></p>
+                    </div>
+                    <div class="lanes-grid">
+                        <div class="lane">
+                            <div class="lane-header">Lane 1 &middot; Top Row</div>
+                            <div class="field">
+                                <label for="muni_lane1_stop_ids">Stop Code</label>
+                                <input type="text" name="muni_lane1_stop_ids" id="muni_lane1_stop_ids"
+                                       value="{{ settings.muni_lane1_stop_ids }}" placeholder="15553">
+                                <p class="hint">Find codes at <a href="https://www.sfmta.com/maps/muni-system-map" target="_blank" style="color:var(--accent);">sfmta.com</a> or on stop signs. e.g. Van Ness &amp; Market: 15553</p>
+                            </div>
+                            <div class="field">
+                                <label>Direction</label>
+                                <div class="pill-group">
+                                    <label>
+                                        <input type="radio" name="muni_lane1_direction" value="IB"
+                                               {% if settings.muni_lane1_direction == 'IB' %}checked{% endif %}>
+                                        <span class="pill">→ Downtown</span>
+                                    </label>
+                                    <label>
+                                        <input type="radio" name="muni_lane1_direction" value="OB"
+                                               {% if settings.muni_lane1_direction == 'OB' %}checked{% endif %}>
+                                        <span class="pill">→ Marina</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="field">
+                                <label for="muni_lane1_lines">Lines</label>
+                                <input type="text" name="muni_lane1_lines" id="muni_lane1_lines"
+                                       value="{{ settings.muni_lane1_lines }}" placeholder="14,49">
+                                <p class="hint">Route numbers/letters, e.g. 14,49 or N or 38,38R. Leave blank for all lines at stop.</p>
+                            </div>
+                        </div>
+                        <div class="lane">
+                            <div class="lane-header">Lane 2 &middot; Bottom Row</div>
+                            <div class="field">
+                                <label for="muni_lane2_stop_ids">Stop Code</label>
+                                <input type="text" name="muni_lane2_stop_ids" id="muni_lane2_stop_ids"
+                                       value="{{ settings.muni_lane2_stop_ids }}" placeholder="13447">
+                                <p class="hint">e.g. Church &amp; Duboce (N Judah): 13447</p>
+                            </div>
+                            <div class="field">
+                                <label>Direction</label>
+                                <div class="pill-group">
+                                    <label>
+                                        <input type="radio" name="muni_lane2_direction" value="IB"
+                                               {% if settings.muni_lane2_direction == 'IB' %}checked{% endif %}>
+                                        <span class="pill">→ Downtown</span>
+                                    </label>
+                                    <label>
+                                        <input type="radio" name="muni_lane2_direction" value="OB"
+                                               {% if settings.muni_lane2_direction == 'OB' %}checked{% endif %}>
+                                        <span class="pill">→ Marina</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="field">
+                                <label for="muni_lane2_lines">Lines</label>
+                                <input type="text" name="muni_lane2_lines" id="muni_lane2_lines"
+                                       value="{{ settings.muni_lane2_lines }}" placeholder="N">
+                                <p class="hint">Route numbers/letters. Leave blank for all lines at stop.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </form>
 
@@ -520,11 +611,27 @@
     </div>
 
     <script>
+        function getTransitProvider() {
+            var radios = document.querySelectorAll('input[name="transit_provider"]');
+            for (var r of radios) { if (r.checked) return r.value; }
+            return 'subway';
+        }
+
         function toggleModeSettings() {
             var mode = document.getElementById('mode').value;
-            var transit = document.getElementById('transit-settings');
+            var providerRow = document.getElementById('transit-provider-row');
+            var subwaySection = document.getElementById('transit-settings-subway');
+            var muniSection = document.getElementById('transit-settings-muni');
 
-            transit.classList.toggle('hidden', mode === 'spotify');
+            // Show transit provider picker only in auto mode
+            providerRow.style.display = (mode === 'auto') ? '' : 'none';
+
+            var provider = getTransitProvider();
+            var showSubway = (mode === 'subway') || (mode === 'auto' && provider === 'subway');
+            var showMuni   = (mode === 'muni')   || (mode === 'auto' && provider === 'muni');
+
+            subwaySection.classList.toggle('hidden', !showSubway);
+            muniSection.classList.toggle('hidden', !showMuni);
         }
 
         function toggleScheduleFields() {
