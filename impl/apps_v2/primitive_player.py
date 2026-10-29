@@ -5,7 +5,7 @@ recipe. A background worker fetches a random photo or artwork (by default
 a mix of Wikimedia Commons Picture of the Day, Art Institute of Chicago,
 and Met Open Access -- none need an API key; Flickr interestingness and
 Picsum also supported), then runs the `primitive` binary to approximate
-it with ~100-200 shapes at 128px working resolution.
+it with ~200 shapes at 128px working resolution.
 
 The binary writes every shape to disk as it works, so playback streams:
 the display starts showing the build-up within seconds and follows a few
@@ -45,7 +45,7 @@ HTTP_TIMEOUT = 20          # seconds, per photo-source request
 GENERATION_TIMEOUT = 1200  # seconds, per picture
 QUEUE_TARGET = 2           # upcoming pictures to keep ready
 CACHE_KEEP = 6             # finished sequences kept on disk
-SHAPE_COUNTS = range(100, 201, 10)  # bot's 100-500, scaled to 64px
+SHAPE_COUNTS = range(200, 231, 10)  # ~200 shapes per picture
 ALPHA = 128                # shape opacity passed to the binary
 SOURCES = ('mix', 'wikimedia', 'museum', 'met', 'flickr', 'picsum')
 # Subject terms that favor paintings over object photography.
