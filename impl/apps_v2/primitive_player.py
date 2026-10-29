@@ -66,6 +66,35 @@ def _find_binary():
     return shutil.which('primitive')
 
 
+def _set_affinity(cpus):
+    """Pin the calling thread to the given CPUs (Linux only, best effort)."""
+    try:
+        if cpus and hasattr(os, 'sched_setaffinity'):
+            os.sched_setaffinity(0, set(cpus))
+            return True
+    except OSError:
+        pass
+    return False
+
+
+def _cpu_plan():
+    """Split usable CPUs into a display core and generator cores.
+
+    The LED refresh thread already owns the isolated last core
+    (isolcpus); this reserves the highest *usable* core for the render
+    loop and leaves the rest to generation, so the two stop competing.
+    Returns (display_cpu, generator_cpus) or (None, set()) when there
+    aren't enough cores to bother.
+    """
+    try:
+        usable = sorted(os.sched_getaffinity(0))
+    except (AttributeError, OSError):
+        return None, set()
+    if len(usable) < 3:
+        return None, set()
+    return usable[-1], set(usable[:-1])
+
+
 class PrimitiveScreen:
     def __init__(self, config):
         self.canvas_width = CANVAS
@@ -113,6 +142,13 @@ class PrimitiveScreen:
         self._warned_no_key = False
         self._lock = threading.Lock()
 
+        # Core separation (see _cpu_plan): this runs on the controller's
+        # main thread, which becomes the render loop -- pin it to the
+        # display core. The worker thread + generator binary get the rest.
+        self.display_cpu, self.generator_cpus = _cpu_plan()
+        if self.display_cpu is not None:
+            _set_affinity({self.display_cpu})
+
         if self.binary is None:
             print("[Primitive] primitive binary not found "
                   "(looked in impl/vendor/, $PRIMITIVE_BIN, PATH). Mode will stay black.",
@@ -122,6 +158,10 @@ class PrimitiveScreen:
             self._adopt_existing_cache()
             thread = threading.Thread(target=self._worker, daemon=True)
             thread.start()
+            if self.display_cpu is not None:
+                print(f"[Primitive] CPU plan: display on core {self.display_cpu}, "
+                      f"generation on cores {sorted(self.generator_cpus)}.",
+                      flush=True)
             print("[Primitive] Mode started; first picture will appear in a few "
                   "seconds and build up live.", flush=True)
 
@@ -173,6 +213,9 @@ class PrimitiveScreen:
     # ----- generation (background thread) -----
 
     def _worker(self):
+        # Fetching/downloading/cropping happens here; keep it (and the
+        # generator child it spawns) off the display core.
+        _set_affinity(self.generator_cpus)
         while True:
             with self._lock:
                 queued = len(self.sequences)
@@ -205,10 +248,15 @@ class PrimitiveScreen:
         with self._lock:
             self.sequences.append(seq)  # visible to playback immediately
 
-        # Nicest possible priority plus a cap on Go runtime threads:
-        # building the next picture must never starve the display loop
-        # (that contention shows up as flicker on the matrix).
-        cmd = ['nice', '-n', '19', self.binary,
+        # Nicest possible priority, a cap on Go runtime threads, and
+        # confinement to the generator cores: building the next picture
+        # must never starve the display loop (that contention shows up
+        # as flicker on the matrix).
+        cmd = []
+        if self.generator_cpus and shutil.which('taskset'):
+            cmd += ['taskset', '-c',
+                    ','.join(str(c) for c in sorted(self.generator_cpus))]
+        cmd += ['nice', '-n', '19', self.binary,
                '-i', photo_path,
                '-o', os.path.join(frames_dir, '%03d.png'),
                '-n', str(shapes), '-m', str(mode),
