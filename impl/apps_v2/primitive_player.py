@@ -12,8 +12,9 @@ the display starts showing the build-up within seconds and follows a few
 shapes behind the generator, resting on the latest shape whenever it
 catches up. The render loop never blocks on network or generation.
 
-The matrix process and this module share state only through the cache
-directory; generation runs at low priority (nice + limited workers).
+The matrix process and the webapp share state only through files: the
+cache directory, plus a small state file naming the on-screen picture.
+Generation runs on its own cores at the lowest priority (see _cpu_plan).
 """
 
 import datetime
@@ -146,14 +147,14 @@ class PrimitiveScreen:
         # main thread, which becomes the render loop -- pin it to the
         # display core. The worker thread + generator binary get the rest.
         self.display_cpu, self.generator_cpus = _cpu_plan()
-        if self.display_cpu is not None:
-            _set_affinity({self.display_cpu})
 
         if self.binary is None:
             print("[Primitive] primitive binary not found "
                   "(looked in impl/vendor/, $PRIMITIVE_BIN, PATH). Mode will stay black.",
                   flush=True)
         else:
+            if self.display_cpu is not None:
+                _set_affinity({self.display_cpu})
             os.makedirs(CACHE_DIR, exist_ok=True)
             # Deliberately do NOT replay cached sequences: after a
             # restart the display used to rerun up to 6 old pictures
@@ -285,9 +286,10 @@ class PrimitiveScreen:
         for old in dirs[:-keep]:
             if old not in protected:
                 shutil.rmtree(old, ignore_errors=True)
-        # Downloads are deleted right after generation; sweep any orphans
-        # (e.g. left behind by a crash). Only the worker thread downloads,
-        # and it is the only caller of this method, so none are in flight.
+        # Downloads are normally moved into their sequence dir as
+        # source.jpg; sweep orphans left behind by a crash between
+        # download and move. Only the worker thread downloads, and it
+        # is the only caller of this method, so none are in flight.
         for orphan in glob.glob(os.path.join(CACHE_DIR, '_dl_*')):
             try:
                 os.remove(orphan)
@@ -485,7 +487,7 @@ class PrimitiveScreen:
                 'format': 'json', 'nojsoncallback': 1,
                 'date': date.strftime('%Y-%m-%d'),
                 'per_page': 100,
-            }, timeout=HTTP_TIMEOUT)
+            }, headers=UA_HEADERS, timeout=HTTP_TIMEOUT)
             data = resp.json()
             if data.get('stat') != 'ok':
                 raise RuntimeError(f"Flickr API: {data.get('message', data)}")
