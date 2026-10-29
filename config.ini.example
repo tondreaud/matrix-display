@@ -24,4 +24,20 @@ stop_ids = L03
 direction = S
 lines = L
 
+[Primitive]
+; Photos that draw themselves with geometric shapes (fogleman/primitive).
+; source: mix (default; mostly Wikimedia Commons Picture of the Day photos
+; plus Art Institute of Chicago public-domain art, no keys needed),
+; wikimedia or museum alone, flickr (interestingness; new API keys now
+; require Flickr Pro), or picsum (random photos, no key).
+; Picsum is used automatically as a fallback if the chosen source fails.
+source = mix
+flickr_api_key =
+; Generation runs in the background at low priority.
+workers = 2
+resize = 128
+; The build-up is the show: seconds between new shapes (higher = slower).
+shape_seconds = 0.5
+hold_seconds = 25
+
 

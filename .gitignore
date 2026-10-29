@@ -8,3 +8,5 @@ impl/.cache
 config.ini
 impl/.current_mode
 impl/.fullscreen
+impl/.primitive_cache
+impl/.spotify_status
