@@ -103,6 +103,10 @@ class PrimitiveScreen:
         self.last_advance = 0.0
         self.hold_until = 0.0
         self.current_img = self.black
+        self._has_shown = False   # a real picture has reached the matrix
+        self._frontier_seq = None  # seq the cached frontier count belongs to
+        self._frontier_count = 0
+        self._frontier_checked_at = 0.0
         self._seen_photo_ids = set()
         self._warned_no_key = False
         self._lock = threading.Lock()
@@ -151,10 +155,18 @@ class PrimitiveScreen:
 
     def _available_frames(self, seq):
         """Frames safe to show. While generating, stay 1 frame behind the
-        frontier so we never read a PNG that is still being written."""
+        frontier so we never read a PNG that is still being written.
+        The count is cached briefly: the render loop asks ~12x/second,
+        and globbing the frames directory each time competes with the
+        generator for CPU and SD-card I/O."""
         if seq['done']:
             return seq['total'] or 0
-        return max(0, len(self._frames_in(seq['dir'])) - 1)
+        now = time.time()
+        if self._frontier_seq is not seq or now - self._frontier_checked_at >= 0.25:
+            self._frontier_seq = seq
+            self._frontier_checked_at = now
+            self._frontier_count = max(0, len(self._frames_in(seq['dir'])) - 1)
+        return self._frontier_count
 
     # ----- generation (background thread) -----
 
@@ -186,7 +198,10 @@ class PrimitiveScreen:
         with self._lock:
             self.sequences.append(seq)  # visible to playback immediately
 
-        cmd = ['nice', '-n', '10', self.binary,
+        # Nicest possible priority plus a cap on Go runtime threads:
+        # building the next picture must never starve the display loop
+        # (that contention shows up as flicker on the matrix).
+        cmd = ['nice', '-n', '19', self.binary,
                '-i', photo_path,
                '-o', os.path.join(frames_dir, '%03d.png'),
                '-n', str(shapes), '-m', str(mode),
@@ -197,7 +212,9 @@ class PrimitiveScreen:
         start = time.time()
         try:
             result = subprocess.run(cmd, capture_output=True, text=True,
-                                    timeout=GENERATION_TIMEOUT)
+                                    timeout=GENERATION_TIMEOUT,
+                                    env={**os.environ,
+                                         'GOMAXPROCS': str(self.workers)})
             if result.returncode != 0:
                 print(f"[Primitive] binary failed: {result.stderr[-300:]}", flush=True)
         except Exception as e:
@@ -514,7 +531,13 @@ class PrimitiveScreen:
 
         if self.current is None:
             if not self._start_next():
-                return (self.black, False)  # first picture not ready yet
+                # Nothing ready. Before the first picture that's a black
+                # screen; afterwards, hold the last good frame -- a dry
+                # queue (slow network, failed fetch) must never blank
+                # the display. (Same lesson as the old Spotify flicker.)
+                if self._has_shown:
+                    return (self.current_img, True)
+                return (self.black, False)
 
         seq = self.current
         available = self._available_frames(seq)
@@ -529,6 +552,7 @@ class PrimitiveScreen:
                         self.current_img = img.convert("RGB")
                     self.frame_idx += 1
                     self.last_advance = now
+                    self._has_shown = True
                 except Exception:
                     pass  # frame still being written; try again next tick
             return (self.current_img, True)

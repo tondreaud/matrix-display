@@ -165,6 +165,7 @@ def main():
     shutdown_delay = config.getint('Matrix', 'shutdown_delay', fallback=15)
     black_screen = Image.new("RGB", (canvas_width, canvas_height), (0,0,0))
     last_active_time = math.floor(time.time())
+    last_pushed_frame = None  # identity of the frame last sent to the matrix
 
     # Auto mode: grace period before switching to subway (avoids flicker on brief pauses)
     auto_fallback_delay = 10  # seconds of no spotify activity before showing subway
@@ -208,7 +209,14 @@ def main():
         elif is_schedule_sleeping():
             frame = black_screen
 
-        matrix.SetImage(frame)
+        # Pushing to the matrix is the expensive part of this loop, and
+        # screens often return the same frame object repeatedly (static
+        # album art, a Primitive picture resting between shapes, the
+        # black screen). The matrix keeps showing its last image, so
+        # only push when the frame actually changed.
+        if frame is not last_pushed_frame:
+            matrix.SetImage(frame)
+            last_pushed_frame = frame
         time.sleep(0.08)
 
 
