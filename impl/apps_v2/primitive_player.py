@@ -1,10 +1,11 @@
 """Primitive mode: photos that draw themselves out of geometric shapes.
 
 Inspired by fogleman/primitive (MIT), and by the Primitive Twitter bot's
-recipe. A background worker fetches a random interesting photo (Wikimedia
-Commons Picture of the Day by default -- no API key needed; Flickr
-interestingness and Picsum also supported), then runs the `primitive`
-binary to approximate it with ~100-200 shapes at 128px working resolution.
+recipe. A background worker fetches a random photo or artwork (by default
+a mix of Wikimedia Commons Picture of the Day, Art Institute of Chicago,
+and Met Open Access -- none need an API key; Flickr interestingness and
+Picsum also supported), then runs the `primitive` binary to approximate
+it with ~100-200 shapes at 128px working resolution.
 
 The binary writes every shape to disk as it works, so playback streams:
 the display starts showing the build-up within seconds and follows a few
@@ -17,6 +18,7 @@ directory; generation runs at low priority (nice + limited workers).
 
 import datetime
 import glob
+import hashlib
 import json
 import os
 import random
@@ -39,6 +41,17 @@ MODE_NAMES = {
 # Beziers (6) excluded: their thin strokes vanish at 64x64.
 BOT_MODES = [1, 5, 7]
 UA_HEADERS = {'User-Agent': 'MatrixDisplay/1.0 (personal LED display; primitive mode)'}
+HTTP_TIMEOUT = 20          # seconds, per photo-source request
+GENERATION_TIMEOUT = 1200  # seconds, per picture
+QUEUE_TARGET = 2           # upcoming pictures to keep ready
+CACHE_KEEP = 6             # finished sequences kept on disk
+SHAPE_COUNTS = range(100, 201, 10)  # bot's 100-500, scaled to 64px
+ALPHA = 128                # shape opacity passed to the binary
+SOURCES = ('mix', 'wikimedia', 'museum', 'met', 'flickr', 'picsum')
+# Subject terms that favor paintings over object photography.
+ART_SUBJECTS = ['landscape', 'portrait', 'still life', 'seascape',
+                'cityscape', 'mountains', 'river', 'garden', 'flowers',
+                'ocean', 'forest']
 
 
 def _find_binary():
@@ -57,20 +70,31 @@ class PrimitiveScreen:
         self.canvas_height = CANVAS
         self.binary = _find_binary()
 
-        def cfg_get(name, fallback):
+        def cfg_num(name, fallback, cast, lo, hi):
+            """Config value cast to a number and clamped; fallback on typos."""
             try:
-                if config is not None and 'Primitive' in config:
-                    return config.get('Primitive', name, fallback=fallback)
+                raw = config.get('Primitive', name, fallback=fallback) \
+                    if config is not None else fallback
+                return max(lo, min(hi, cast(raw)))
             except Exception:
-                pass
-            return fallback
+                return cast(fallback)
 
-        self.workers = int(cfg_get('workers', '2'))
-        self.work_res = int(cfg_get('resize', '128'))
-        self.hold_seconds = float(cfg_get('hold_seconds', '25'))
-        self.shape_seconds = float(cfg_get('shape_seconds', '0.5'))
-        self.source = str(cfg_get('source', 'mix')).strip().lower()
-        self.flickr_api_key = str(cfg_get('flickr_api_key', '')).strip()
+        self.workers = cfg_num('workers', '2', int, 1, 4)
+        self.work_res = cfg_num('resize', '128', int, 32, 512)
+        self.hold_seconds = cfg_num('hold_seconds', '25', float, 0, 3600)
+        self.shape_seconds = cfg_num('shape_seconds', '0.5', float, 0.01, 60)
+        try:
+            self.source = str(config.get('Primitive', 'source', fallback='mix')
+                              if config is not None else 'mix').strip().lower()
+            self.flickr_api_key = str(config.get(
+                'Primitive', 'flickr_api_key', fallback='')
+                if config is not None else '').strip()
+        except Exception:
+            self.source, self.flickr_api_key = 'mix', ''
+        if self.source not in SOURCES:
+            print(f"[Primitive] Unknown source '{self.source}'; using mix. "
+                  f"Valid: {', '.join(SOURCES)}", flush=True)
+            self.source = 'mix'
 
         self.black = Image.new("RGB", (CANVAS, CANVAS), (0, 0, 0))
         self.sequences = []       # seq dicts: {dir, meta, done, total}
@@ -101,7 +125,7 @@ class PrimitiveScreen:
     def _frames_in(seq_dir):
         return sorted(glob.glob(os.path.join(seq_dir, 'frames', '*.png')))
 
-    def _load_sequence(self, seq_dir, done=True):
+    def _load_sequence(self, seq_dir):
         frames = self._frames_in(seq_dir)
         if not frames:
             return None
@@ -111,16 +135,19 @@ class PrimitiveScreen:
                 meta = json.load(f)
         except Exception:
             pass
-        return {'dir': seq_dir, 'meta': meta, 'done': done,
-                'total': len(frames) if done else None}
+        return {'dir': seq_dir, 'meta': meta, 'done': True,
+                'total': len(frames)}
 
     def _adopt_existing_cache(self):
         """Reuse finished sequences from earlier runs (streaming ones lack meta)."""
         for meta_path in sorted(glob.glob(os.path.join(CACHE_DIR, '*', 'meta.json'))):
-            seq = self._load_sequence(os.path.dirname(meta_path), done=True)
+            seq = self._load_sequence(os.path.dirname(meta_path))
             if seq:
                 with self._lock:
                     self.sequences.append(seq)
+                if seq['meta'].get('photo_id'):
+                    # Don't immediately re-draw what we showed last run.
+                    self._seen_photo_ids.add(seq['meta']['photo_id'])
 
     def _available_frames(self, seq):
         """Frames safe to show. While generating, stay 1 frame behind the
@@ -135,7 +162,7 @@ class PrimitiveScreen:
         while True:
             with self._lock:
                 queued = len(self.sequences)
-            if queued >= 2:
+            if queued >= QUEUE_TARGET:
                 time.sleep(5)
                 continue
             try:
@@ -147,7 +174,7 @@ class PrimitiveScreen:
     def _generate_sequence(self):
         photo_id, photo_path, source_url = self._fetch_photo()
         mode = random.choice(BOT_MODES)
-        shapes = random.randint(10, 20) * 10  # 100-200, bot range scaled to 64px
+        shapes = random.choice(SHAPE_COUNTS)
         name = f"{str(photo_id).replace(':', '_')}_m{mode}_n{shapes}_{int(time.time())}"
         seq_dir = os.path.join(CACHE_DIR, name)
         frames_dir = os.path.join(seq_dir, 'frames')
@@ -164,18 +191,23 @@ class PrimitiveScreen:
                '-o', os.path.join(frames_dir, '%03d.png'),
                '-n', str(shapes), '-m', str(mode),
                '-r', str(self.work_res), '-s', str(CANVAS),
-               '-a', '128', '-j', str(self.workers)]
+               '-a', str(ALPHA), '-j', str(self.workers)]
         print(f"[Primitive] Generating {shapes} {MODE_NAMES[mode]} from "
               f"{source_url} ...", flush=True)
         start = time.time()
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=1200)
-            ok = result.returncode == 0
-            if not ok:
+            result = subprocess.run(cmd, capture_output=True, text=True,
+                                    timeout=GENERATION_TIMEOUT)
+            if result.returncode != 0:
                 print(f"[Primitive] binary failed: {result.stderr[-300:]}", flush=True)
         except Exception as e:
-            ok = False
             print(f"[Primitive] binary failed: {e}", flush=True)
+        finally:
+            # The frames are the product; the download itself is scratch.
+            try:
+                os.remove(photo_path)
+            except OSError:
+                pass
 
         frames = self._frames_in(seq_dir)
         seq['done'] = True
@@ -193,74 +225,74 @@ class PrimitiveScreen:
                     self.sequences.remove(seq)
             shutil.rmtree(seq_dir, ignore_errors=True)
 
-    def _prune_cache(self, keep=6):
+    def _prune_cache(self, keep=CACHE_KEEP):
         dirs = [p for p in glob.glob(os.path.join(CACHE_DIR, '*')) if os.path.isdir(p)]
         dirs.sort(key=lambda p: os.path.getmtime(p))
-        current_dir = self.current['dir'] if self.current else None
+        with self._lock:
+            protected = {s['dir'] for s in self.sequences}
+        if self.current:
+            protected.add(self.current['dir'])
         for old in dirs[:-keep]:
-            if old != current_dir:
+            if old not in protected:
                 shutil.rmtree(old, ignore_errors=True)
+        # Downloads are deleted right after generation; sweep any orphans
+        # (e.g. left behind by a crash). Only the worker thread downloads,
+        # and it is the only caller of this method, so none are in flight.
+        for orphan in glob.glob(os.path.join(CACHE_DIR, '_dl_*')):
+            try:
+                os.remove(orphan)
+            except OSError:
+                pass
 
     # ----- photo sources -----
+
+    def _attempt(self, label, fetcher):
+        """Run one source fetcher; None (with a log line) on failure."""
+        try:
+            return fetcher()
+        except Exception as e:
+            print(f"[Primitive] {label} failed ({e})", flush=True)
+            return None
 
     def _fetch_photo(self):
         """Get the next photo/artwork from the configured source.
 
         'mix' (default) rotates roughly evenly: Wikimedia photos, Art
-        Institute of Chicago art, and Met art. Any source failure falls
-        back down the chain to Picsum.
+        Institute of Chicago art, and Met art. Failures fall back down
+        the chain to Picsum, which needs no key and rarely fails.
         """
+        fetchers = {
+            'wikimedia': ('Wikimedia', self._fetch_wikimedia),
+            'museum': ('Art Institute', self._fetch_museum),
+            'met': ('Met', self._fetch_met),
+            'picsum': ('Picsum', self._fetch_picsum),
+        }
         if self.source == 'mix':
-            roll = random.random()
-            if roll < 0.33:
-                try:
-                    return self._fetch_met()
-                except Exception as e:
-                    print(f"[Primitive] Met failed ({e}); using Wikimedia", flush=True)
-            elif roll < 0.66:
-                try:
-                    return self._fetch_museum()
-                except Exception as e:
-                    print(f"[Primitive] Museum failed ({e}); using Wikimedia", flush=True)
-            try:
-                return self._fetch_wikimedia()
-            except Exception as e:
-                print(f"[Primitive] Wikimedia failed ({e}); falling back to Picsum",
-                      flush=True)
+            chain = [random.choice(['met', 'museum', 'wikimedia']),
+                     'wikimedia', 'picsum']
+        elif self.source == 'flickr':
+            if not self.flickr_api_key:
+                if not self._warned_no_key:
+                    self._warned_no_key = True
+                    print("[Primitive] No flickr_api_key in config; using Picsum. "
+                          "Add one under [Primitive] to enable Flickr.", flush=True)
+                return self._fetch_picsum()
+            result = self._attempt('Flickr', self._fetch_flickr)
+            if result is not None:
+                return result
             return self._fetch_picsum()
-        if self.source == 'met':
-            try:
-                return self._fetch_met()
-            except Exception as e:
-                print(f"[Primitive] Met failed ({e}); falling back to Picsum",
-                      flush=True)
-            return self._fetch_picsum()
-        if self.source == 'museum':
-            try:
-                return self._fetch_museum()
-            except Exception as e:
-                print(f"[Primitive] Museum failed ({e}); falling back to Picsum",
-                      flush=True)
-            return self._fetch_picsum()
-        if self.source == 'wikimedia':
-            try:
-                return self._fetch_wikimedia()
-            except Exception as e:
-                print(f"[Primitive] Wikimedia failed ({e}); falling back to Picsum",
-                      flush=True)
-            return self._fetch_picsum()
-        if self.source == 'flickr':
-            if self.flickr_api_key:
-                try:
-                    return self._fetch_flickr()
-                except Exception as e:
-                    print(f"[Primitive] Flickr failed ({e}); falling back to Picsum",
-                          flush=True)
-            elif not self._warned_no_key:
-                self._warned_no_key = True
-                print("[Primitive] No flickr_api_key in config; using Picsum. "
-                      "Add one under [Primitive] to enable Flickr.", flush=True)
-        return self._fetch_picsum()
+        else:
+            chain = [self.source, 'picsum']
+
+        tried = set()
+        for name in chain:
+            if name in tried:
+                continue
+            tried.add(name)
+            result = self._attempt(*fetchers[name])
+            if result is not None:
+                return result
+        raise RuntimeError("all photo sources failed")
 
     def _fetch_wikimedia(self):
         """Random date -> that day's Wikimedia Commons Picture of the Day.
@@ -277,7 +309,7 @@ class PrimitiveScreen:
                 'generator': 'images', 'titles': f'Template:Potd/{date_str}',
                 'prop': 'imageinfo', 'iiprop': 'url|size|mime',
                 'iiurlwidth': 640,
-            }, headers=UA_HEADERS, timeout=20)
+            }, headers=UA_HEADERS, timeout=HTTP_TIMEOUT)
             pages = resp.json().get('query', {}).get('pages', {})
             candidates = []
             for p in pages.values():
@@ -288,13 +320,14 @@ class PrimitiveScreen:
                                        p.get('title', ''), info))
             if not candidates:
                 continue
-            candidates.sort(reverse=True)
+            candidates.sort(key=lambda c: c[0], reverse=True)
             _area, title, info = candidates[0]
             key = f"wikimedia:{title}"
             if key in self._seen_photo_ids:
                 continue
+            digest = hashlib.md5(title.encode()).hexdigest()[:8]
             path = self._download_square(info['thumburl'],
-                                         f"_dl_wiki_{abs(hash(title)) % 999999}.jpg")
+                                         f"_dl_wiki_{digest}.jpg")
             if path is None:
                 continue
             self._seen_photo_ids.add(key)
@@ -307,16 +340,14 @@ class PrimitiveScreen:
         No API key; CC0 collection. Subject terms rotate to favor paintings
         over object photography. Images via their IIIF server at 640px.
         """
-        subjects = ['landscape', 'portrait', 'still life', 'seascape',
-                    'cityscape', 'mountains', 'river', 'garden']
         for _ in range(5):
-            term = random.choice(subjects)
+            term = random.choice(ART_SUBJECTS)
             resp = requests.get('https://api.artic.edu/api/v1/artworks/search', params={
                 'q': term,
                 'query[term][is_public_domain]': 'true',
                 'fields': 'id,title,image_id,artist_title',
                 'page': random.randint(1, 30), 'limit': 10,
-            }, headers=UA_HEADERS, timeout=20)
+            }, headers=UA_HEADERS, timeout=HTTP_TIMEOUT)
             data = resp.json()
             items = [d for d in data.get('data', []) if d.get('image_id')]
             if not items:
@@ -342,24 +373,22 @@ class PrimitiveScreen:
         so candidates are verified per-object via isPublicDomain.
         primaryImageSmall (~600px) is plenty for a 64px matrix.
         """
-        subjects = ['landscape', 'portrait', 'still life', 'seascape',
-                    'cityscape', 'mountains', 'river', 'garden', 'flowers',
-                    'ocean', 'forest']
-        api = 'https://collectionapi.metmuseum.org/public/collection/v1'
+        # v1 search was retired 2026-10-01; v1.1 is paginated, so
+        # sample a random offset into the result set.
+        search_url = 'https://collectionapi.metmuseum.org/public/collection/v1.1/search'
+        objects_url = 'https://collectionapi.metmuseum.org/public/collection/v1/objects'
         for _ in range(5):
-            term = random.choice(subjects)
-            # v1 search was retired 2026-10-01; v1.1 is paginated, so
-            # sample a random offset into the result set.
-            resp = requests.get(f'{api}.1/search', params={
+            term = random.choice(ART_SUBJECTS)
+            resp = requests.get(search_url, params={
                 'q': term, 'hasImages': 'true', 'limit': 1,
-            }, headers=UA_HEADERS, timeout=20)
+            }, headers=UA_HEADERS, timeout=HTTP_TIMEOUT)
             total = resp.json().get('total') or 0
             if not total:
                 continue
-            resp = requests.get(f'{api}.1/search', params={
+            resp = requests.get(search_url, params={
                 'q': term, 'hasImages': 'true', 'limit': 20,
                 'offset': random.randint(0, max(0, total - 20)),
-            }, headers=UA_HEADERS, timeout=20)
+            }, headers=UA_HEADERS, timeout=HTTP_TIMEOUT)
             ids = resp.json().get('objectIDs') or []
             if not ids:
                 continue
@@ -369,8 +398,8 @@ class PrimitiveScreen:
                 key = f"met:{oid}"
                 if key in self._seen_photo_ids:
                     continue
-                obj_resp = requests.get(f'{api}/objects/{oid}',
-                                        headers=UA_HEADERS, timeout=20)
+                obj_resp = requests.get(f'{objects_url}/{oid}',
+                                        headers=UA_HEADERS, timeout=HTTP_TIMEOUT)
                 if obj_resp.status_code != 200:
                     continue
                 obj = obj_resp.json()
@@ -406,7 +435,7 @@ class PrimitiveScreen:
                 'format': 'json', 'nojsoncallback': 1,
                 'date': date.strftime('%Y-%m-%d'),
                 'per_page': 100,
-            }, timeout=20)
+            }, timeout=HTTP_TIMEOUT)
             data = resp.json()
             if data.get('stat') != 'ok':
                 raise RuntimeError(f"Flickr API: {data.get('message', data)}")
@@ -445,18 +474,19 @@ class PrimitiveScreen:
 
     def _download_square(self, url, filename):
         """Download an image and center-crop it square. Returns path or None."""
-        resp = requests.get(url, timeout=20, headers=UA_HEADERS)
+        resp = requests.get(url, timeout=HTTP_TIMEOUT, headers=UA_HEADERS)
         if resp.status_code != 200:
             return None
         tmp = os.path.join(CACHE_DIR, filename)
         with open(tmp, 'wb') as f:
             f.write(resp.content)
         try:
-            img = Image.open(tmp).convert('RGB')
-            side = min(img.size)
-            left = (img.size[0] - side) // 2
-            top = (img.size[1] - side) // 2
-            img.crop((left, top, left + side, top + side)).save(tmp)
+            with Image.open(tmp) as img:
+                rgb = img.convert('RGB')
+            side = min(rgb.size)
+            left = (rgb.size[0] - side) // 2
+            top = (rgb.size[1] - side) // 2
+            rgb.crop((left, top, left + side, top + side)).save(tmp)
         except Exception:
             try:
                 os.remove(tmp)
@@ -495,7 +525,8 @@ class PrimitiveScreen:
                 frame_path = os.path.join(
                     seq['dir'], 'frames', f"{self.frame_idx + 1:03d}.png")
                 try:
-                    self.current_img = Image.open(frame_path).convert("RGB")
+                    with Image.open(frame_path) as img:
+                        self.current_img = img.convert("RGB")
                     self.frame_idx += 1
                     self.last_advance = now
                 except Exception:

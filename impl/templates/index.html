@@ -339,6 +339,24 @@
         .btn-save:hover { opacity: 0.9; }
         .btn-save:active { opacity: 0.8; transform: scale(0.99); }
 
+        /* Card action button (e.g. Primitive toggle) */
+        .btn-card {
+            background: var(--accent);
+            color: #fff;
+            padding: 10px 16px;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            font-size: 14px;
+            font-family: inherit;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: opacity 0.15s;
+        }
+        .btn-card:hover { opacity: 0.9; }
+        .btn-card.is-active { background: #484f58; }
+        .card-hint { font-size: 12px; color: var(--text-secondary); }
+
         /* Collapsible sections */
         .collapsible { overflow: hidden; }
         .hidden { display: none; }
@@ -392,11 +410,10 @@
                             <div class="toggle-status {% if settings.primitive_active %}on{% else %}off{% endif %}" style="font-size:15px;">
                                 {% if settings.primitive_active %}Active{% else %}Off{% endif %}
                             </div>
-                            <div style="font-size:12px;color:var(--text-secondary);">Photos &amp; museum art drawing themselves</div>
+                            <div class="card-hint">Photos &amp; museum art drawing themselves</div>
                         </div>
-                        <button type="button"
-                                onclick="document.getElementById('primitive-toggle-form').submit()"
-                                style="background:{% if settings.primitive_active %}#484f58{% else %}var(--accent){% endif %};color:#fff;padding:10px 16px;border:none;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;white-space:nowrap;">
+                        <button type="button" class="btn-card{% if settings.primitive_active %} is-active{% endif %}"
+                                onclick="document.getElementById('primitive-toggle-form').submit()">
                             {% if settings.primitive_active %}Exit Primitive{% else %}Start Primitive{% endif %}
                         </button>
                     </div>

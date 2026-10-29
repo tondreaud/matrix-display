@@ -268,10 +268,12 @@ def spotify_paste():
 def index():
     """Display the configuration form."""
     config = read_config()
-    
+    current_mode = get_current_mode()
+    spotify_needs_reauth, spotify_status = get_spotify_status()
+
     # Get current values
     settings = {
-        'mode': get_current_mode(),
+        'mode': current_mode,
         'fullscreen': get_fullscreen(),
         'brightness': config.getint('Matrix', 'brightness', fallback=50),
         'transit_provider': config.get('Matrix', 'transit_provider', fallback='subway'),
@@ -295,9 +297,9 @@ def index():
         'muni_lane2_lines': config.get('MuniLane2', 'lines', fallback=''),
         'muni_lane2_destination': config.get('MuniLane2', 'destination', fallback=''),
         'display_on': get_display_status(),
-        'primitive_active': get_current_mode() == 'primitive',
-        'spotify_needs_reauth': get_spotify_status()[0],
-        'spotify_status': get_spotify_status()[1],
+        'primitive_active': current_mode == 'primitive',
+        'spotify_needs_reauth': spotify_needs_reauth,
+        'spotify_status': spotify_status,
         'schedule': get_schedule(),
     }
 
@@ -378,15 +380,10 @@ def save():
 
     # Write config
     write_config(config)
-    
+
     # Restart the display service only on Raspberry Pi (Linux)
-    if IS_RASPBERRY_PI:
-        try:
-            subprocess.run(['sudo', 'systemctl', 'restart', 'matrix'], 
-                          capture_output=True, timeout=10)
-        except Exception:
-            pass
-    
+    restart_display()
+
     return redirect(url_for('index'))
 
 
