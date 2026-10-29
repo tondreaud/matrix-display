@@ -155,7 +155,15 @@ class PrimitiveScreen:
                   flush=True)
         else:
             os.makedirs(CACHE_DIR, exist_ok=True)
-            self._adopt_existing_cache()
+            # Deliberately do NOT replay cached sequences: after a
+            # restart the display used to rerun up to 6 old pictures
+            # (~10 minutes) before anything new appeared. Streaming
+            # makes a fresh picture visible within seconds instead.
+            # Old dirs are still pruned by _prune_cache as new ones land.
+            try:
+                os.remove(CURRENT_STATE_PATH)  # webapp: nothing on screen yet
+            except OSError:
+                pass
             thread = threading.Thread(target=self._worker, daemon=True)
             thread.start()
             if self.display_cpu is not None:
@@ -170,30 +178,6 @@ class PrimitiveScreen:
     @staticmethod
     def _frames_in(seq_dir):
         return sorted(glob.glob(os.path.join(seq_dir, 'frames', '*.png')))
-
-    def _load_sequence(self, seq_dir):
-        frames = self._frames_in(seq_dir)
-        if not frames:
-            return None
-        meta = {}
-        try:
-            with open(os.path.join(seq_dir, 'meta.json')) as f:
-                meta = json.load(f)
-        except Exception:
-            pass
-        return {'dir': seq_dir, 'meta': meta, 'done': True,
-                'total': len(frames)}
-
-    def _adopt_existing_cache(self):
-        """Reuse finished sequences from earlier runs (streaming ones lack meta)."""
-        for meta_path in sorted(glob.glob(os.path.join(CACHE_DIR, '*', 'meta.json'))):
-            seq = self._load_sequence(os.path.dirname(meta_path))
-            if seq:
-                with self._lock:
-                    self.sequences.append(seq)
-                if seq['meta'].get('photo_id'):
-                    # Don't immediately re-draw what we showed last run.
-                    self._seen_photo_ids.add(seq['meta']['photo_id'])
 
     def _available_frames(self, seq):
         """Frames safe to show. While generating, stay 1 frame behind the
