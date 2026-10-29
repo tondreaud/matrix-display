@@ -9,4 +9,5 @@ config.ini
 impl/.current_mode
 impl/.fullscreen
 impl/.primitive_cache
+impl/.previous_mode
 impl/.spotify_status

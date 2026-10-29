@@ -54,6 +54,36 @@ def set_current_mode(mode):
     with open(mode_file, 'w') as f:
         f.write(mode)
 
+PREVIOUS_MODE_PATH = os.path.join(os.path.dirname(__file__), '.previous_mode')
+VALID_MODES = ('auto', 'spotify', 'subway', 'muni', 'primitive')
+
+def get_previous_mode():
+    """Mode to return to when leaving Primitive. Defaults to auto."""
+    try:
+        with open(PREVIOUS_MODE_PATH, 'r') as f:
+            mode = f.read().strip()
+        if mode in VALID_MODES and mode != 'primitive':
+            return mode
+    except OSError:
+        pass
+    return 'auto'
+
+def set_previous_mode(mode):
+    try:
+        with open(PREVIOUS_MODE_PATH, 'w') as f:
+            f.write(mode)
+    except OSError:
+        pass
+
+def restart_display():
+    """Restart the display service (Raspberry Pi only)."""
+    if IS_RASPBERRY_PI:
+        try:
+            subprocess.run(['sudo', 'systemctl', 'restart', 'matrix'],
+                           capture_output=True, timeout=20)
+        except Exception:
+            pass
+
 def get_fullscreen():
     """Get fullscreen setting, default to True for Spotify."""
     fs_file = os.path.join(os.path.dirname(__file__), '.fullscreen')
@@ -265,6 +295,7 @@ def index():
         'muni_lane2_lines': config.get('MuniLane2', 'lines', fallback=''),
         'muni_lane2_destination': config.get('MuniLane2', 'destination', fallback=''),
         'display_on': get_display_status(),
+        'primitive_active': get_current_mode() == 'primitive',
         'spotify_needs_reauth': get_spotify_status()[0],
         'spotify_status': get_spotify_status()[1],
         'schedule': get_schedule(),
@@ -331,6 +362,9 @@ def save():
     # Save mode and fullscreen
     mode = request.form.get('mode', 'spotify')
     set_current_mode(mode)
+    if mode != 'primitive':
+        # Keep Exit Primitive pointed at the last non-Primitive mode.
+        set_previous_mode(mode)
     
     fullscreen = request.form.get('fullscreen') == 'on'
     set_fullscreen(fullscreen)
@@ -355,6 +389,17 @@ def save():
     
     return redirect(url_for('index'))
 
+
+@app.route('/primitive/toggle', methods=['POST'])
+def primitive_toggle():
+    """Switch in/out of Primitive mode, remembering the previous mode."""
+    if get_current_mode() == 'primitive':
+        set_current_mode(get_previous_mode())
+    else:
+        set_previous_mode(get_current_mode())
+        set_current_mode('primitive')
+    restart_display()
+    return redirect(url_for('index'))
 
 @app.route('/schedule/toggle', methods=['POST'])
 def schedule_toggle():

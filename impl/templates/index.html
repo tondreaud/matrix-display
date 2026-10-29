@@ -384,6 +384,24 @@
                     </div>
                 </div>
 
+                <!-- Primitive Art -->
+                <div class="card">
+                    <div class="card-label">Primitive Art</div>
+                    <div class="toggle-row" style="flex:1;">
+                        <div class="toggle-info">
+                            <div class="toggle-status {% if settings.primitive_active %}on{% else %}off{% endif %}" style="font-size:15px;">
+                                {% if settings.primitive_active %}Active{% else %}Off{% endif %}
+                            </div>
+                            <div style="font-size:12px;color:var(--text-secondary);">Photos &amp; museum art drawing themselves</div>
+                        </div>
+                        <button type="button"
+                                onclick="document.getElementById('primitive-toggle-form').submit()"
+                                style="background:{% if settings.primitive_active %}#484f58{% else %}var(--accent){% endif %};color:#fff;padding:10px 16px;border:none;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;white-space:nowrap;">
+                            {% if settings.primitive_active %}Exit Primitive{% else %}Start Primitive{% endif %}
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Brightness -->
                 <div class="card">
                     <div class="card-label">Brightness</div>
@@ -634,6 +652,7 @@
 
         <!-- Hidden forms for toggle actions -->
         <form method="POST" action="/display/toggle" id="toggle-form" style="display:none;"></form>
+        <form method="POST" action="/primitive/toggle" id="primitive-toggle-form" style="display:none;"></form>
     </div>
 
     <script>
