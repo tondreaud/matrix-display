@@ -417,6 +417,29 @@
                             {% if settings.primitive_active %}Exit Primitive{% else %}Start Primitive{% endif %}
                         </button>
                     </div>
+                    {% if settings.primitive_info %}
+                    <div style="display:flex;gap:12px;align-items:center;margin-top:12px;">
+                        {% if settings.primitive_info.has_source %}
+                        <a href="/primitive/source" target="_blank" title="Open the source image">
+                            <img src="/primitive/source" alt="Source image being drawn"
+                                 style="width:72px;height:72px;object-fit:cover;border-radius:8px;display:block;">
+                        </a>
+                        {% endif %}
+                        <div>
+                            <div style="font-size:13px;">
+                                {% if settings.primitive_info.building %}
+                                Building… {{ settings.primitive_info.built }}/{{ settings.primitive_info.shapes }} {{ settings.primitive_info.mode_name }}
+                                {% else %}
+                                {{ settings.primitive_info.shapes }} {{ settings.primitive_info.mode_name }} (finished)
+                                {% endif %}
+                            </div>
+                            <div class="card-hint">
+                                {% if settings.primitive_info.has_source %}Tap the thumbnail for the full source image.<br>{% endif %}
+                                {% if settings.primitive_info.source_url %}<a href="{{ settings.primitive_info.source_url }}" target="_blank" style="color:var(--accent);">View original ↗</a>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
 
                 <!-- Brightness -->

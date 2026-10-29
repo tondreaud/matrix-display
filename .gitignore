@@ -10,4 +10,5 @@ impl/.current_mode
 impl/.fullscreen
 impl/.primitive_cache
 impl/.previous_mode
+impl/.primitive_current
 impl/.spotify_status

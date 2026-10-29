@@ -7,7 +7,7 @@ import json
 import secrets
 import subprocess
 import configparser
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, send_from_directory, abort
 
 # Check if we're running on a Raspberry Pi (Linux with systemd)
 IS_RASPBERRY_PI = sys.platform == 'linux'
@@ -83,6 +83,35 @@ def restart_display():
                            capture_output=True, timeout=20)
         except Exception:
             pass
+
+PRIMITIVE_CACHE_DIR = os.path.join(os.path.dirname(__file__), '.primitive_cache')
+PRIMITIVE_CURRENT_PATH = os.path.join(os.path.dirname(__file__), '.primitive_current')
+
+def get_primitive_status():
+    """What's on screen in Primitive mode (published by the display process).
+
+    Returns None when Primitive has never run. Progress is derived from
+    the frame files on disk, so it stays fresh without shared memory.
+    """
+    try:
+        with open(PRIMITIVE_CURRENT_PATH) as f:
+            state = json.load(f)
+    except (OSError, ValueError):
+        return None
+    seq_dir = os.path.basename(state.get('seq_dir', ''))
+    frames_dir = os.path.join(PRIMITIVE_CACHE_DIR, seq_dir, 'frames')
+    try:
+        built = len([n for n in os.listdir(frames_dir) if n.endswith('.png')])
+    except OSError:
+        built = 0
+    shapes = state.get('shapes') or 0
+    state.update({
+        'built': built,
+        'building': shapes > 0 and built < shapes,
+        'has_source': bool(state.get('has_source')) and os.path.exists(
+            os.path.join(PRIMITIVE_CACHE_DIR, seq_dir, 'source.jpg')),
+    })
+    return state
 
 def get_fullscreen():
     """Get fullscreen setting, default to True for Spotify."""
@@ -298,6 +327,7 @@ def index():
         'muni_lane2_destination': config.get('MuniLane2', 'destination', fallback=''),
         'display_on': get_display_status(),
         'primitive_active': current_mode == 'primitive',
+        'primitive_info': get_primitive_status() if current_mode == 'primitive' else None,
         'spotify_needs_reauth': spotify_needs_reauth,
         'spotify_status': spotify_status,
         'schedule': get_schedule(),
@@ -397,6 +427,16 @@ def primitive_toggle():
         set_current_mode('primitive')
     restart_display()
     return redirect(url_for('index'))
+
+@app.route('/primitive/source')
+def primitive_source():
+    """Serve the source image the current Primitive picture is built from."""
+    info = get_primitive_status()
+    if not info or not info['has_source']:
+        abort(404)
+    seq_path = os.path.join(PRIMITIVE_CACHE_DIR,
+                            os.path.basename(info.get('seq_dir', '')))
+    return send_from_directory(seq_path, 'source.jpg')
 
 @app.route('/schedule/toggle', methods=['POST'])
 def schedule_toggle():

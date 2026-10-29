@@ -33,6 +33,8 @@ from PIL import Image
 CANVAS = 64
 IMPL_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 CACHE_DIR = os.path.join(IMPL_DIR, '.primitive_cache')
+# Which sequence is on screen, for the webapp's source-image viewer.
+CURRENT_STATE_PATH = os.path.join(IMPL_DIR, '.primitive_current')
 MODE_NAMES = {
     0: 'combo', 1: 'triangles', 2: 'rectangles', 3: 'ellipses', 4: 'circles',
     5: 'rotated rectangles', 6: 'beziers', 7: 'rotated ellipses', 8: 'polygons',
@@ -191,6 +193,11 @@ class PrimitiveScreen:
         seq_dir = os.path.join(CACHE_DIR, name)
         frames_dir = os.path.join(seq_dir, 'frames')
         os.makedirs(frames_dir, exist_ok=True)
+        # Keep the (square-cropped) source next to its frames so the
+        # webapp can show what the picture is being built from.
+        source_path = os.path.join(seq_dir, 'source.jpg')
+        shutil.move(photo_path, source_path)
+        photo_path = source_path
 
         meta = {'photo_id': photo_id, 'source_url': source_url,
                 'mode': mode, 'mode_name': MODE_NAMES[mode], 'shapes': shapes}
@@ -219,12 +226,6 @@ class PrimitiveScreen:
                 print(f"[Primitive] binary failed: {result.stderr[-300:]}", flush=True)
         except Exception as e:
             print(f"[Primitive] binary failed: {e}", flush=True)
-        finally:
-            # The frames are the product; the download itself is scratch.
-            try:
-                os.remove(photo_path)
-            except OSError:
-                pass
 
         frames = self._frames_in(seq_dir)
         seq['done'] = True
@@ -514,6 +515,24 @@ class PrimitiveScreen:
 
     # ----- playback (render loop) -----
 
+    def _write_current_state(self, seq):
+        """Publish what's on screen for the webapp's source viewer."""
+        state = {
+            'photo_id': seq['meta'].get('photo_id', ''),
+            'source_url': seq['meta'].get('source_url', ''),
+            'mode_name': seq['meta'].get('mode_name', ''),
+            'shapes': seq['meta'].get('shapes', 0),
+            'seq_dir': os.path.basename(seq['dir']),
+            'has_source': os.path.exists(os.path.join(seq['dir'], 'source.jpg')),
+        }
+        try:
+            tmp = CURRENT_STATE_PATH + '.tmp'
+            with open(tmp, 'w') as f:
+                json.dump(state, f)
+            os.replace(tmp, CURRENT_STATE_PATH)  # atomic; webapp reads anytime
+        except OSError:
+            pass
+
     def _start_next(self):
         with self._lock:
             self.current = self.sequences.pop(0) if self.sequences else None
@@ -521,6 +540,7 @@ class PrimitiveScreen:
             self.frame_idx = 0
             self.last_advance = 0.0
             self.hold_until = 0.0
+            self._write_current_state(self.current)
         return self.current is not None
 
     def generate(self):
