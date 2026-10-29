@@ -240,6 +240,17 @@
         </form>
     </div>
     
+    <!-- Spotify connection -->
+    <div class="power-toggle-container">
+        <div>
+            <div class="power-label">🎵 Spotify</div>
+            <div class="power-status {% if settings.spotify_needs_reauth %}off{% else %}on{% endif %}">
+                {{ settings.spotify_status }}
+            </div>
+        </div>
+        <a href="/spotify" style="background:#1db954;color:#fff;padding:10px 16px;border-radius:5px;text-decoration:none;font-weight:bold;">{% if settings.spotify_needs_reauth %}Reconnect{% else %}Manage{% endif %}</a>
+    </div>
+
     <form method="POST" action="/save">
         <div class="form-group">
             <label for="mode">Display Mode</label>
