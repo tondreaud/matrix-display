@@ -26,10 +26,11 @@ lines = L
 
 [Primitive]
 ; Photos that draw themselves with geometric shapes (fogleman/primitive).
-; source: mix (default; mostly Wikimedia Commons Picture of the Day photos
-; plus Art Institute of Chicago public-domain art, no keys needed),
-; wikimedia or museum alone, flickr (interestingness; new API keys now
-; require Flickr Pro), or picsum (random photos, no key).
+; source: mix (default; rotates Wikimedia Commons Picture of the Day
+; photos, Art Institute of Chicago art, and Met Open Access art -- no
+; keys needed), met, museum, or wikimedia alone, flickr
+; (interestingness; new API keys now require Flickr Pro), or picsum
+; (random photos, no key).
 ; Picsum is used automatically as a fallback if the chosen source fails.
 source = mix
 flickr_api_key =

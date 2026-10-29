@@ -206,11 +206,18 @@ class PrimitiveScreen:
     def _fetch_photo(self):
         """Get the next photo/artwork from the configured source.
 
-        'mix' (default) rotates: mostly Wikimedia photos, ~1 in 3 museum art.
-        Any source failure falls back down the chain to Picsum.
+        'mix' (default) rotates roughly evenly: Wikimedia photos, Art
+        Institute of Chicago art, and Met art. Any source failure falls
+        back down the chain to Picsum.
         """
         if self.source == 'mix':
-            if random.random() < 0.34:
+            roll = random.random()
+            if roll < 0.33:
+                try:
+                    return self._fetch_met()
+                except Exception as e:
+                    print(f"[Primitive] Met failed ({e}); using Wikimedia", flush=True)
+            elif roll < 0.66:
                 try:
                     return self._fetch_museum()
                 except Exception as e:
@@ -219,6 +226,13 @@ class PrimitiveScreen:
                 return self._fetch_wikimedia()
             except Exception as e:
                 print(f"[Primitive] Wikimedia failed ({e}); falling back to Picsum",
+                      flush=True)
+            return self._fetch_picsum()
+        if self.source == 'met':
+            try:
+                return self._fetch_met()
+            except Exception as e:
+                print(f"[Primitive] Met failed ({e}); falling back to Picsum",
                       flush=True)
             return self._fetch_picsum()
         if self.source == 'museum':
@@ -320,6 +334,66 @@ class PrimitiveScreen:
             credit = f"https://www.artic.edu/artworks/{item['id']}"
             return key, path, credit
         raise RuntimeError("could not get a museum artwork after several tries")
+
+    def _fetch_met(self):
+        """Random public-domain artwork from The Met (Open Access API).
+
+        No API key; CC0 collection. Search has no public-domain filter,
+        so candidates are verified per-object via isPublicDomain.
+        primaryImageSmall (~600px) is plenty for a 64px matrix.
+        """
+        subjects = ['landscape', 'portrait', 'still life', 'seascape',
+                    'cityscape', 'mountains', 'river', 'garden', 'flowers',
+                    'ocean', 'forest']
+        api = 'https://collectionapi.metmuseum.org/public/collection/v1'
+        for _ in range(5):
+            term = random.choice(subjects)
+            # v1 search was retired 2026-10-01; v1.1 is paginated, so
+            # sample a random offset into the result set.
+            resp = requests.get(f'{api}.1/search', params={
+                'q': term, 'hasImages': 'true', 'limit': 1,
+            }, headers=UA_HEADERS, timeout=20)
+            total = resp.json().get('total') or 0
+            if not total:
+                continue
+            resp = requests.get(f'{api}.1/search', params={
+                'q': term, 'hasImages': 'true', 'limit': 20,
+                'offset': random.randint(0, max(0, total - 20)),
+            }, headers=UA_HEADERS, timeout=20)
+            ids = resp.json().get('objectIDs') or []
+            if not ids:
+                continue
+            random.shuffle(ids)
+            candidates = []
+            for oid in ids[:8]:
+                key = f"met:{oid}"
+                if key in self._seen_photo_ids:
+                    continue
+                obj_resp = requests.get(f'{api}/objects/{oid}',
+                                        headers=UA_HEADERS, timeout=20)
+                if obj_resp.status_code != 200:
+                    continue
+                obj = obj_resp.json()
+                if not obj.get('isPublicDomain'):
+                    continue
+                url = obj.get('primaryImageSmall') or obj.get('primaryImage')
+                if not url:
+                    continue
+                candidates.append((oid, key, url, obj))
+                # Paintings are full-bleed and colorful; mounted photos
+                # and works on paper waste most of a 64px matrix.
+                if obj.get('classification') == 'Paintings':
+                    break
+            paintings = [c for c in candidates
+                         if c[3].get('classification') == 'Paintings']
+            for oid, key, url, obj in (paintings or candidates):
+                path = self._download_square(url, f"_dl_met_{oid}.jpg")
+                if path is None:
+                    continue
+                self._seen_photo_ids.add(key)
+                credit = obj.get('objectURL') or 'https://www.metmuseum.org'
+                return key, path, credit
+        raise RuntimeError("could not get a Met artwork after several tries")
 
     def _fetch_flickr(self):
         """Bot recipe: random date -> that day's interestingness list -> random photo."""
