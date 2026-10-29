@@ -371,6 +371,19 @@
                     </div>
                 </div>
 
+                <!-- Spotify -->
+                <div class="card">
+                    <div class="card-label">Spotify</div>
+                    <div class="toggle-row" style="flex:1;">
+                        <div class="toggle-info">
+                            <div class="toggle-status {% if settings.spotify_needs_reauth %}off{% else %}on{% endif %}" style="font-size:15px;">
+                                {{ settings.spotify_status }}
+                            </div>
+                        </div>
+                        <a href="/spotify" style="background:#1db954;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">{% if settings.spotify_needs_reauth %}Reconnect{% else %}Manage{% endif %}</a>
+                    </div>
+                </div>
+
                 <!-- Brightness -->
                 <div class="card">
                     <div class="card-label">Brightness</div>

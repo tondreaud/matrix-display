@@ -4,6 +4,7 @@
 import os
 import sys
 import json
+import secrets
 import subprocess
 import configparser
 from flask import Flask, render_template, request, redirect, url_for
@@ -16,6 +17,17 @@ app.secret_key = 'matrix-display-secret-key'
 
 # Path to config file (relative to impl/ directory)
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), '..', 'config.ini')
+
+# Spotify token cache + status, shared with the display process.
+SPOTIFY_CACHE_PATH = os.path.join(os.path.dirname(__file__), '.cache')
+SPOTIFY_STATUS_PATH = os.path.join(os.path.dirname(__file__), '.spotify_status')
+SPOTIFY_SCOPE = "user-read-currently-playing, user-read-playback-state, user-modify-playback-state"
+
+# Single pending authorization (hobby device, one user). Server-side because
+# the Spotify callback arrives on 127.0.0.1, which cannot see cookies that
+# were set on the Pi's hostname.
+_pending_spotify_auth = {'state': None}
+
 
 def read_config():
     """Read the current configuration."""
@@ -93,6 +105,135 @@ def set_schedule(enabled, off_time, on_time, timezone):
         except Exception:
             pass
 
+def make_spotify_oauth(state=None):
+    """Build a Spotipy OAuth manager from config.ini."""
+    import spotipy
+    config = read_config()
+    kwargs = {
+        'client_id': config.get('Spotify', 'client_id', fallback=''),
+        'client_secret': config.get('Spotify', 'client_secret', fallback=''),
+        'redirect_uri': config.get('Spotify', 'redirect_uri', fallback=''),
+        'scope': SPOTIFY_SCOPE,
+        'cache_path': SPOTIFY_CACHE_PATH,
+        'open_browser': False,
+    }
+    if state:
+        kwargs['state'] = state
+    return spotipy.SpotifyOAuth(**kwargs)
+
+
+def get_spotify_status():
+    """Return (needs_reauth, label) from the display process status file."""
+    try:
+        with open(SPOTIFY_STATUS_PATH) as f:
+            if f.read().strip() == 'needs_reauth':
+                return True, 'Reconnect needed'
+    except OSError:
+        pass
+    if os.path.exists(SPOTIFY_CACHE_PATH):
+        return False, 'Connected'
+    return True, 'Not connected'
+
+
+def write_spotify_status(state):
+    try:
+        with open(SPOTIFY_STATUS_PATH, 'w') as f:
+            f.write(state)
+    except OSError:
+        pass
+
+
+def finish_spotify_auth(code):
+    """Exchange an authorization code for tokens, verify, restart display."""
+    import spotipy
+    oauth = make_spotify_oauth()
+    # Remove the old cache first: it may be owned by root (display service),
+    # which would block this process from overwriting it in place.
+    try:
+        os.remove(SPOTIFY_CACHE_PATH)
+    except OSError:
+        pass
+    token_info = oauth.get_access_token(code=code, check_cache=False)
+    if not token_info:
+        raise RuntimeError('Spotify did not return a token.')
+    try:
+        os.chmod(SPOTIFY_CACHE_PATH, 0o600)
+    except OSError:
+        pass
+    # Verify the new token actually works before claiming success.
+    sp = spotipy.Spotify(auth_manager=oauth)
+    sp.current_user_playing_track()
+    write_spotify_status('connected')
+    if IS_RASPBERRY_PI:
+        subprocess.run(['sudo', 'systemctl', 'restart', 'matrix'],
+                       capture_output=True, timeout=20)
+
+
+@app.route('/spotify')
+def spotify_page():
+    needs_reauth, _label = get_spotify_status()
+    return render_template('spotify.html', spotify_needs_reauth=needs_reauth,
+                           message=request.args.get('message'),
+                           error=request.args.get('error'))
+
+
+@app.route('/spotify/login')
+def spotify_login():
+    """Send the browser to Spotify. Login completes via paste or callback."""
+    state = secrets.token_urlsafe(16)
+    _pending_spotify_auth['state'] = state
+    oauth = make_spotify_oauth(state=state)
+    return redirect(oauth.get_authorize_url())
+
+
+@app.route('/spotify/callback')
+def spotify_callback():
+    """Real callback, reached when the browser can get to this Pi directly
+    (e.g. through an SSH tunnel or private HTTPS address)."""
+    error = request.args.get('error')
+    code = request.args.get('code')
+    state = request.args.get('state')
+    if error or not code:
+        return ('Spotify login was not completed. You can close this tab '
+                'and try again from the Matrix Display page.', 400)
+    if _pending_spotify_auth['state'] and state != _pending_spotify_auth['state']:
+        return ('This login link has expired. Start again from the '
+                'Matrix Display page.', 400)
+    try:
+        finish_spotify_auth(code)
+    except Exception as e:
+        return (f'Spotify connection failed: {e}. You can close this tab '
+                'and try again from the Matrix Display page.', 500)
+    _pending_spotify_auth['state'] = None
+    return ('<h1>Spotify connected</h1><p>You can close this tab. '
+            'The display will update in a few seconds.</p>')
+
+
+@app.route('/spotify/paste', methods=['POST'])
+def spotify_paste():
+    """Finish login from the pasted 127.0.0.1 redirect address."""
+    pasted = (request.form.get('redirect_url') or '').strip()
+    needs_reauth, _label = get_spotify_status()
+    if not pasted:
+        return render_template('spotify.html', spotify_needs_reauth=needs_reauth,
+                               error='Paste the address from your browser first.')
+    try:
+        oauth = make_spotify_oauth()
+        if 'error=' in pasted:
+            raise RuntimeError('Spotify reported an error in that address. '
+                               'Try Reconnect Spotify again.')
+        code = oauth.parse_response_code(pasted)
+        if not code:
+            raise RuntimeError('No authorization code found in that address.')
+        finish_spotify_auth(code)
+    except Exception as e:
+        return render_template('spotify.html', spotify_needs_reauth=True,
+                               error=f'Spotify connection failed: {e}')
+    _pending_spotify_auth['state'] = None
+    return render_template('spotify.html', spotify_needs_reauth=False,
+                           message='Spotify connected. The display will update in a few seconds.')
+
+
 @app.route('/')
 def index():
     """Display the configuration form."""
@@ -112,6 +253,8 @@ def index():
         'lane2_direction': config.get('SubwayLane2', 'direction', fallback='S'),
         'lane2_lines': config.get('SubwayLane2', 'lines', fallback='L'),
         'display_on': get_display_status(),
+        'spotify_needs_reauth': get_spotify_status()[0],
+        'spotify_status': get_spotify_status()[1],
         'schedule': get_schedule(),
     }
 

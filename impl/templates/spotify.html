@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reconnect Spotify · Matrix Display</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #0b0e14;
+            color: #e6edf3;
+            min-height: 100vh;
+        }
+        h1 { font-size: 22px; margin: 10px 0 4px; }
+        p { color: #7d8590; line-height: 1.5; }
+        .card {
+            background: #131720;
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .status { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+        .status.ok { color: #3fb950; }
+        .status.bad { color: #f85149; }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 14px;
+            text-align: center;
+            text-decoration: none;
+            background: #1db954;
+            color: #fff;
+        }
+        .btn:active { opacity: 0.85; }
+        ol { color: #7d8590; line-height: 1.6; padding-left: 20px; }
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #333;
+            border-radius: 8px;
+            background: #0d1017;
+            color: #fff;
+            font-size: 14px;
+            min-height: 76px;
+            margin-top: 10px;
+        }
+        .msg { border-radius: 8px; padding: 12px 14px; margin-top: 20px; line-height: 1.5; }
+        .msg.ok { background: rgba(63,185,80,0.15); color: #3fb950; }
+        .msg.err { background: rgba(248,81,73,0.15); color: #f85149; }
+        a.home { color: #58a6ff; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <p><a class="home" href="/">← Back to settings</a></p>
+    <h1>Spotify</h1>
+
+    {% if message %}
+    <div class="msg ok">{{ message }}</div>
+    {% endif %}
+    {% if error %}
+    <div class="msg err">{{ error }}</div>
+    {% endif %}
+
+    <div class="card">
+        <div class="status {% if spotify_needs_reauth %}bad{% else %}ok{% endif %}">
+            {% if spotify_needs_reauth %}Reconnect needed{% else %}Connected{% endif %}
+        </div>
+        <p>Spotify logins expire about every 6 months. Reconnecting takes under a minute.</p>
+
+        <a class="btn" href="/spotify/login" target="_blank" rel="noopener">Reconnect Spotify</a>
+
+        <ol>
+            <li>Tap <strong>Reconnect Spotify</strong> and log in / approve in Spotify.</li>
+            <li>The browser will then try to open <strong>127.0.0.1</strong> and show a
+                “cannot connect” page. That is expected.</li>
+            <li>Copy the whole address from the address bar.</li>
+            <li>Paste it below and tap <strong>Connect</strong>.</li>
+        </ol>
+
+        <form method="POST" action="/spotify/paste">
+            <textarea name="redirect_url" placeholder="Paste the 127.0.0.1 address here" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
+            <button type="submit" class="btn">Connect</button>
+        </form>
+    </div>
+</body>
+</html>
