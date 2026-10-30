@@ -55,7 +55,7 @@ def set_current_mode(mode):
         f.write(mode)
 
 PREVIOUS_MODE_PATH = os.path.join(os.path.dirname(__file__), '.previous_mode')
-VALID_MODES = ('auto', 'spotify', 'subway', 'muni', 'primitive')
+VALID_MODES = ('auto', 'spotify', 'subway', 'muni', 'primitive', 'shanshui')
 
 def get_previous_mode():
     """Mode to return to when leaving Primitive. Defaults to auto."""

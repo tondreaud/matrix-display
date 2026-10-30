@@ -41,4 +41,14 @@ resize = 128
 shape_seconds = 0.5
 hold_seconds = 25
 
+[Shanshui]
+; Endlessly scrolling Chinese landscape (shan-shui-inf by Lingdong
+; Huang, MIT; generator vendored in impl/vendor/shanshui/). Landscapes
+; are pre-generated in the background; the display pans across them.
+; seed: leave blank for a new landscape on every start, or set a word
+; to revisit the same landscape.
+seed =
+; Seconds per pixel of scroll (higher = slower, calmer).
+scroll_seconds = 0.35
+
 

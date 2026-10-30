@@ -5,6 +5,7 @@ from PIL import Image
 from apps_v2 import spotify_player
 from apps_v2 import subway_display
 from apps_v2 import primitive_player
+from apps_v2 import shanshui_player
 from modules import spotify_module
 from modules import mta_module
 from modules import muni_module
@@ -93,7 +94,7 @@ def main():
 
     parser.add_argument('-f', '--fullscreen', action='store_true', help='Always display album art in fullscreen (Spotify mode)')
     parser.add_argument('-e', '--emulated', action='store_true', help='Run in a matrix emulator')
-    parser.add_argument('-m', '--mode', choices=['spotify', 'subway', 'muni', 'auto', 'primitive'], default='auto', help='Display mode: spotify, subway, muni, auto (spotify with transit fallback), or primitive')
+    parser.add_argument('-m', '--mode', choices=['spotify', 'subway', 'muni', 'auto', 'primitive', 'shanshui'], default='auto', help='Display mode: spotify, subway, muni, auto (spotify with transit fallback), primitive, or shanshui')
     args = parser.parse_args()
 
     is_emulated = args.emulated
@@ -139,6 +140,9 @@ def main():
     elif mode == 'primitive':
         print("Starting in PRIMITIVE mode (photos drawing themselves)...")
         app = primitive_player.PrimitiveScreen(config)
+    elif mode == 'shanshui':
+        print("Starting in SHAN SHUI mode (endless landscape)...")
+        app = shanshui_player.ShanshuiScreen(config)
     elif mode == 'auto':
         provider_label = 'SF Muni' if transit_provider == 'muni' else 'NYC Subway'
         print(f"Starting in AUTO mode (spotify with {provider_label} fallback)...")
