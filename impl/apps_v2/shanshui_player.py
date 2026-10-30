@@ -34,22 +34,14 @@ STRIP_WORLD = 2048      # world width of one pre-rendered strip
 RENDER_H = 256          # strips are rendered this tall, then downscaled
 QUEUE_TARGET = 3        # strips to keep ready (including the current one)
 GENERATION_TIMEOUT = 600
-# Hasui palette: inspired by Kawase Hasui's shin-hanga landscapes --
-# deep indigo line work, blue-gray aerial perspective, paper white as
-# light, and a bokashi (hand-gradated) band of warm dawn glow at the
-# horizon, the way his prints set a small warm accent against a cool
-# blue field (e.g. Moon at Magome, Evening Snow at Edo River).
-HASUI_BLACK = (16, 24, 48)      # deep indigo ink
-HASUI_MID = (96, 118, 142)      # blue-gray washes
-HASUI_WHITE = (226, 231, 232)   # snow/paper light
-BOKASHI_STOPS = [               # vertical gradient, top -> bottom
-    (0.00, (26, 42, 80)),
-    (0.38, (86, 108, 138)),
-    (0.52, (216, 164, 104)),    # warm glow at the horizon
-    (0.62, (104, 116, 132)),
-    (1.00, (28, 42, 68)),
-]
-BOKASHI_STRENGTH = 0.38
+# Hasui dark-mode palette: inspired by Kawase Hasui's blue-hour
+# prints (Moon at Magome, Evening Snow at Edo River) but inverted
+# for the LED matrix into three distinct bands -- water and open
+# fields are a solid deepest indigo, mountain masses a clearly
+# different slate blue, and ink detail/highlights a pale ice light.
+WATER = (8, 15, 34)         # darkest: solid indigo
+MOUNTAIN = (70, 122, 108)   # mid: pine-teal ranges (own hue, not a water tint)
+HIGHLIGHT = (238, 242, 245)  # lightest: pale ice highlights
 
 
 def _find(name):
@@ -91,34 +83,18 @@ def _display_cpu():
     return usable[-1] if len(usable) >= 3 else None
 
 
-_gradient_cache = {}
-
-
-def _bokashi(size):
-    """Vertical bokashi gradient for a strip size (cached)."""
-    if size not in _gradient_cache:
-        grad = Image.new('RGB', (1, size[1]))
-        px = grad.load()
-        for y in range(size[1]):
-            f = y / max(1, size[1] - 1)
-            for (f0, c0), (f1, c1) in zip(BOKASHI_STOPS, BOKASHI_STOPS[1:]):
-                if f0 <= f <= f1:
-                    t = (f - f0) / (f1 - f0) if f1 > f0 else 0
-                    px[0, y] = tuple(round(c0[i] + (c1[i] - c0[i]) * t)
-                                     for i in range(3))
-                    break
-        _gradient_cache[size] = grad.resize(size)
-    return _gradient_cache[size]
-
-
 def _hasui(img):
-    """Colorize the ink-on-paper render in Hasui's manner: indigo
-    tritone (deep blue ink, blue-gray washes, paper-white light),
-    with a bokashi gradient laid over it for atmosphere and the
-    warm horizon glow."""
-    base = ImageOps.colorize(img.convert('L'), black=HASUI_BLACK,
-                             mid=HASUI_MID, white=HASUI_WHITE)
-    return Image.blend(base, _bokashi(img.size), BOKASHI_STRENGTH)
+    """Map the ink-on-paper render to the Hasui dark-mode bands.
+
+    Inverting puts the paper/water/field areas at the bottom of the
+    scale (solid WATER indigo) and the ink work at the top
+    (HIGHLIGHT). A gamma lift pushes the mountain shading into the
+    MOUNTAIN band so ranges read as their own color between the two.
+    """
+    inverted = ImageOps.invert(img.convert('L'))
+    lifted = inverted.point(lambda v: round(255 * (v / 255) ** 0.7))
+    return ImageOps.colorize(lifted, black=WATER, mid=MOUNTAIN,
+                             white=HIGHLIGHT)
 
 
 def _nice_prefix(cpus):
