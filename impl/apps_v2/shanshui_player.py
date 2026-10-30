@@ -329,17 +329,12 @@ class ShanshuiScreen:
             names = self.scheme_names
 
             def prep(scheme_name):
-                # Halve the strip height once, here in the background.
-                # The render loop still supersamples 2x when it pans
-                # (128 -> 64), which is what makes the scroll smooth,
-                # but moves 4x fewer pixels per frame than the full
-                # 256px render. (Going all the way to 64 made the pan
-                # shimmer/jerk: 1:1 fractional resampling.)
-                colored = _colorize(gray, SCHEMES[scheme_name])
-                half = RENDER_H // 2
-                return colored.resize(
-                    (colored.size[0] * half // RENDER_H, half),
-                    Image.LANCZOS)
+                # Keep strips at full render height: the render loop
+                # supersamples 256 -> 64 on every frame, which is
+                # what makes the pan smooth. Pre-downscaling strips
+                # (tried 128 and 64) saved CPU but made the scroll
+                # shimmer/jerk, so it was reverted by request.
+                return _colorize(gray, SCHEMES[scheme_name])
 
             if len(names) == 1:
                 return {'x': world_x, 'label': names[0],
