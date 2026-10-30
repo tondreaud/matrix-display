@@ -213,7 +213,12 @@ class ShanshuiScreen:
         except (TypeError, ValueError):
             self.scroll_seconds = 0.35
         palette = str(cfg('palette', 'rotate')).strip().lower()
-        self.scheme_names = [palette] if palette in SCHEMES else ROTATION
+        chosen = [p.strip() for p in palette.split(',')
+                  if p.strip() in SCHEMES]
+        # A single name stays in that scheme; a comma list rotates
+        # through it in order (starting with the first); anything
+        # else is the default rotation.
+        self.scheme_names = chosen if chosen else ROTATION
         self._scheme_idx = 0
 
         self.black = Image.new("RGB", (CANVAS, CANVAS), (0, 0, 0))
@@ -322,21 +327,34 @@ class ShanshuiScreen:
             seq = self._scheme_idx
             self._scheme_idx += 1
             names = self.scheme_names
+
+            def prep(scheme_name):
+                # Halve the strip height once, here in the background.
+                # The render loop still supersamples 2x when it pans
+                # (128 -> 64), which is what makes the scroll smooth,
+                # but moves 4x fewer pixels per frame than the full
+                # 256px render. (Going all the way to 64 made the pan
+                # shimmer/jerk: 1:1 fractional resampling.)
+                colored = _colorize(gray, SCHEMES[scheme_name])
+                half = RENDER_H // 2
+                return colored.resize(
+                    (colored.size[0] * half // RENDER_H, half),
+                    Image.LANCZOS)
+
             if len(names) == 1:
                 return {'x': world_x, 'label': names[0],
-                        'img': _colorize(gray, SCHEMES[names[0]])}
+                        'img': prep(names[0])}
             current = names[(seq // 2) % len(names)]
             if seq % 2 == 0:
                 print(f"[Shanshui] strip {world_x}: holding "
                       f"'{current}'", flush=True)
                 return {'x': world_x, 'label': current,
-                        'img': _colorize(gray, SCHEMES[current])}
+                        'img': prep(current)}
             nxt = names[((seq // 2) + 1) % len(names)]
             print(f"[Shanshui] strip {world_x}: blending "
                   f"'{current}' -> '{nxt}'", flush=True)
             return {'x': world_x, 'label': f'{current}->{nxt}',
-                    'img': _colorize(gray, SCHEMES[current]),
-                    'img2': _colorize(gray, SCHEMES[nxt])}
+                    'img': prep(current), 'img2': prep(nxt)}
         finally:
             for p in (svg_path, png_path):
                 try:
@@ -362,19 +380,23 @@ class ShanshuiScreen:
             self._last_advance = 0.0  # last pan update (wall clock)
 
         strip = self.current
-        max_pan = strip['img'].size[0] - RENDER_H
+        strip_h = strip['img'].size[1]  # CANVAS after prep; see _make_strip
+        max_pan = strip['img'].size[0] - strip_h
 
         # Continuous sub-pixel pan: the view window slides a fraction
-        # of a source pixel per display tick and the downscale samples
-        # that fractional window, instead of jumping a whole pixel
-        # every scroll_seconds (which read as jerkiness).
+        # of a pixel per display tick and the downscale samples that
+        # fractional window, instead of jumping a whole pixel every
+        # scroll_seconds (which read as jerkiness). Pan is tracked in
+        # strip pixels; scroll_seconds is per 256px-render pixel, so
+        # scale by the strip's downscale factor.
         now = time.time()
         if self._last_advance == 0.0:
             self._last_advance = now
         elapsed = now - self._last_advance
         self._last_advance = now
         if elapsed > 0:
-            self.pan = min(max_pan, self.pan + elapsed / self.scroll_seconds)
+            self.pan = min(max_pan, self.pan + elapsed /
+                           self.scroll_seconds * (strip_h / RENDER_H))
 
         if self.pan >= max_pan:
             with self._lock:
@@ -384,7 +406,7 @@ class ShanshuiScreen:
                 self.pan = 0.0
                 return self.generate()
 
-        box = (self.pan, 0, self.pan + RENDER_H, RENDER_H)
+        box = (self.pan, 0, self.pan + strip_h, strip_h)
         self.current_img = strip['img'].resize(
             (CANVAS, CANVAS), Image.LANCZOS, box=box)
         if strip.get('img2') is not None and max_pan > 0:

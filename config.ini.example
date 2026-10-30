@@ -51,8 +51,9 @@ seed =
 ; Seconds per pixel of scroll (higher = slower, calmer).
 scroll_seconds = 0.35
 ; Color scheme: rotate (hold each of classic/sunrise/autumn for a
-; strip, then blend into the next across the following strip) or a
-; single scheme name to stay in it.
+; strip, then blend into the next across the following strip), a
+; single scheme name to stay in it, or a comma list to rotate in
+; that order starting with the first (e.g. sunrise,autumn,classic).
 palette = rotate
 
 
