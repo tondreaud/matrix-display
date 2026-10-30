@@ -34,11 +34,12 @@ STRIP_WORLD = 2048      # world width of one pre-rendered strip
 RENDER_H = 256          # strips are rendered this tall, then downscaled
 QUEUE_TARGET = 3        # strips to keep ready (including the current one)
 GENERATION_TIMEOUT = 600
-# Ink palette: the original is black ink on white paper. Inverted for
-# the matrix (dark land/water), but softened -- deepest ink is a
-# charcoal rather than pure black, highlights stop short of white.
-INK_LOW = 38
-INK_HIGH = 208
+# Sunrise palette: the original ink-on-paper grayscale is colorized
+# as a dawn scene -- ink strokes become warm plum-brown, mid washes
+# become soft tan land, and the paper/water becomes warm cream light.
+SUNRISE_BLACK = (62, 38, 34)
+SUNRISE_MID = (176, 126, 88)
+SUNRISE_WHITE = (250, 203, 146)
 
 
 def _find(name):
@@ -80,12 +81,12 @@ def _display_cpu():
     return usable[-1] if len(usable) >= 3 else None
 
 
-def _inkify(img):
-    """Ink-on-paper -> soft ink-on-dark: invert, then compress levels
-    into [INK_LOW, INK_HIGH] so blacks read as ink, not void."""
-    inverted = ImageOps.invert(img.convert('L'))
-    return inverted.point(
-        lambda v: INK_LOW + (v * (INK_HIGH - INK_LOW)) // 255).convert('RGB')
+def _sunrise(img):
+    """Colorize the ink-on-paper render as land and water at sunrise:
+    soft warm light on the water/paper, tan land washes, deep warm
+    brown ink lines."""
+    return ImageOps.colorize(img.convert('L'), black=SUNRISE_BLACK,
+                             mid=SUNRISE_MID, white=SUNRISE_WHITE)
 
 
 def _nice_prefix(cpus):
@@ -210,7 +211,7 @@ class ShanshuiScreen:
             if result.returncode != 0:
                 raise RuntimeError(f"resvg failed: {result.stderr[-300:]}")
             with Image.open(png_path) as img:
-                return _inkify(img)
+                return _sunrise(img)
         finally:
             for p in (svg_path, png_path):
                 try:
