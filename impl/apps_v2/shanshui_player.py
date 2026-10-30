@@ -22,7 +22,7 @@ import subprocess
 import threading
 import time
 
-from PIL import Image
+from PIL import Image, ImageOps
 
 CANVAS = 64
 IMPL_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
@@ -34,6 +34,11 @@ STRIP_WORLD = 2048      # world width of one pre-rendered strip
 RENDER_H = 256          # strips are rendered this tall, then downscaled
 QUEUE_TARGET = 3        # strips to keep ready (including the current one)
 GENERATION_TIMEOUT = 600
+# Ink palette: the original is black ink on white paper. Inverted for
+# the matrix (dark land/water), but softened -- deepest ink is a
+# charcoal rather than pure black, highlights stop short of white.
+INK_LOW = 38
+INK_HIGH = 208
 
 
 def _find(name):
@@ -64,6 +69,23 @@ def _generator_cpus():
     except (AttributeError, OSError):
         return set()
     return set(usable[:-1]) if len(usable) >= 3 else set()
+
+
+def _display_cpu():
+    """Highest usable CPU, for the render loop (see _generator_cpus)."""
+    try:
+        usable = sorted(os.sched_getaffinity(0))
+    except (AttributeError, OSError):
+        return None
+    return usable[-1] if len(usable) >= 3 else None
+
+
+def _inkify(img):
+    """Ink-on-paper -> soft ink-on-dark: invert, then compress levels
+    into [INK_LOW, INK_HIGH] so blacks read as ink, not void."""
+    inverted = ImageOps.invert(img.convert('L'))
+    return inverted.point(
+        lambda v: INK_LOW + (v * (INK_HIGH - INK_LOW)) // 255).convert('RGB')
 
 
 def _nice_prefix(cpus):
@@ -99,9 +121,8 @@ class ShanshuiScreen:
         self.current_img = self.black
         self.strips = []            # [{'x': world_x, 'img': PIL 749x256}]
         self.current = None
-        self.pan = 0                # pixels into the current strip
-        self._last_advance = 0.0
-        self._frame_key = None      # (id(strip), pan) of current_img's source
+        self.pan = 0.0              # pixels into the current strip (fractional)
+        self._last_advance = 0.0  # last pan update (wall clock)
         self._gen_cpus = _generator_cpus()
         self._lock = threading.Lock()
 
@@ -109,6 +130,11 @@ class ShanshuiScreen:
             print("[Shanshui] qjs/resvg not found in impl/vendor/shanshui/. "
                   "Mode will stay black.", flush=True)
         else:
+            # This runs on the controller's main (render) thread; keep
+            # it on the display core, generation on the others.
+            display_cpu = _display_cpu()
+            if display_cpu is not None:
+                _set_affinity({display_cpu})
             os.makedirs(CACHE_DIR, exist_ok=True)
             thread = threading.Thread(target=self._worker, daemon=True)
             thread.start()
@@ -184,7 +210,7 @@ class ShanshuiScreen:
             if result.returncode != 0:
                 raise RuntimeError(f"resvg failed: {result.stderr[-300:]}")
             with Image.open(png_path) as img:
-                return img.convert('RGB')
+                return _inkify(img)
         finally:
             for p in (svg_path, png_path):
                 try:
@@ -206,35 +232,33 @@ class ShanshuiScreen:
                 self.current = self.strips.pop(0) if self.strips else None
             if self.current is None:
                 return (self.current_img, self.current_img is not self.black)
-            self.pan = 0
-            self._last_advance = 0.0
-            self._frame_key = None
+            self.pan = 0.0
+            self._last_advance = 0.0  # last pan update (wall clock)
 
         strip = self.current
         max_pan = strip['img'].size[0] - RENDER_H
 
+        # Continuous sub-pixel pan: the view window slides a fraction
+        # of a source pixel per display tick and the downscale samples
+        # that fractional window, instead of jumping a whole pixel
+        # every scroll_seconds (which read as jerkiness).
         now = time.time()
         if self._last_advance == 0.0:
             self._last_advance = now
-        steps = int((now - self._last_advance) / self.scroll_seconds)
-        if steps:
-            self._last_advance += steps * self.scroll_seconds
-            self.pan = min(max_pan, self.pan + steps)
+        elapsed = now - self._last_advance
+        self._last_advance = now
+        if elapsed > 0:
+            self.pan = min(max_pan, self.pan + elapsed / self.scroll_seconds)
 
         if self.pan >= max_pan:
             with self._lock:
                 nxt = self.strips.pop(0) if self.strips else None
             if nxt is not None:
                 self.current = nxt
-                self.pan = 0
-                self._last_advance = 0.0
-                self._frame_key = None
+                self.pan = 0.0
                 return self.generate()
 
-        key = (id(strip), self.pan)
-        if key != self._frame_key:
-            frame = strip['img'].crop(
-                (self.pan, 0, self.pan + RENDER_H, RENDER_H))
-            self.current_img = frame.resize((CANVAS, CANVAS), Image.LANCZOS)
-            self._frame_key = key
+        self.current_img = strip['img'].resize(
+            (CANVAS, CANVAS), Image.LANCZOS,
+            box=(self.pan, 0, self.pan + RENDER_H, RENDER_H))
         return (self.current_img, True)
